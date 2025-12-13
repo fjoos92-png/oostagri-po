@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Purchase Orders</title>
+    <meta name="description" content="Farm Purchase Order Management System">
+    <meta name="theme-color" content="#15803d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2315803d' width='100' height='100' rx='20'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>📋</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; }</style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        // Register Service Worker for offline support
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('SW registered:', registration.scope);
+                
+                // Listen for messages from service worker
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                  if (event.data.type === 'TRIGGER_SYNC') {
+                    window.dispatchEvent(new CustomEvent('syncOfflineOrders'));
+                  }
+                });
+              })
+              .catch((error) => console.log('SW registration failed:', error));
+          });
+        }
+        
+        // Offline queue management
+        const OfflineQueue = {
+          QUEUE_KEY: 'farm_po_offline_queue',
+          
+          add: (order) => {
+            const queue = JSON.parse(localStorage.getItem(OfflineQueue.QUEUE_KEY) || '[]');
+            queue.push({ ...order, _queuedAt: Date.now() });
+            localStorage.setItem(OfflineQueue.QUEUE_KEY, JSON.stringify(queue));
+          },
+          
+          getAll: () => {
+            return JSON.parse(localStorage.getItem(OfflineQueue.QUEUE_KEY) || '[]');
+          },
+          
+          remove: (queuedAt) => {
+            const queue = JSON.parse(localStorage.getItem(OfflineQueue.QUEUE_KEY) || '[]');
+            const filtered = queue.filter(o => o._queuedAt !== queuedAt);
+            localStorage.setItem(OfflineQueue.QUEUE_KEY, JSON.stringify(filtered));
+          },
+          
+          clear: () => {
+            localStorage.removeItem(OfflineQueue.QUEUE_KEY);
+          },
+          
+          count: () => {
+            return OfflineQueue.getAll().length;
+          }
+        };
+        
+        window.OfflineQueue = OfflineQueue;
+    </script>
+    <script>
+        const CheckCircle = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('path', {key: 1, d: "M22 11.08V12a10 10 0 1 1-5.93-9.14"}),React.createElement('polyline', {key: 2, points: "22 4 12 14.01 9 11.01"})]);
+        const Search = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('circle', {key: 1, cx: "11", cy: "11", r: "8"}),React.createElement('path', {key: 2, d: "m21 21-4.3-4.3"})]);
+        const ArrowLeft = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('path', {key: 1, d: "m12 19-7-7 7-7"}),React.createElement('path', {key: 2, d: "M19 12H5"})]);
+        const FileText = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('path', {key: 1, d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}),React.createElement('polyline', {key: 2, points: "14 2 14 8 20 8"})]);
+        const LogOut = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('path', {key: 1, d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"}),React.createElement('polyline', {key: 2, points: "16 17 21 12 16 7"}),React.createElement('line', {key: 3, x1: "21", y1: "12", x2: "9", y2: "12"})]);
+        const User = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('path', {key: 1, d: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"}),React.createElement('circle', {key: 2, cx: "12", cy: "7", r: "4"})]);
+        const Users = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('path', {key: 1, d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}),React.createElement('circle', {key: 2, cx: "9", cy: "7", r: "4"}),React.createElement('path', {key: 3, d: "M22 21v-2a4 4 0 0 0-3-3.87"}),React.createElement('path', {key: 4, d: "M16 3.13a4 4 0 0 1 0 7.75"})]);
+        const RefreshCw = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2"}, [React.createElement('polyline', {key: 1, points: "23 4 23 10 17 10"}),React.createElement('polyline', {key: 2, points: "1 20 1 14 7 14"}),React.createElement('path', {key: 3, d: "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"})]);
+        const Loader = ({size = 24}) => React.createElement('svg', {xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", className: "animate-spin"}, [React.createElement('path', {key: 1, d: "M21 12a9 9 0 1 1-6.219-8.56"})]);
+    </script>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // ============================================================
+        // GOOGLE SHEETS API URL
+        // ============================================================
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxX9lmLb4_8eTilDg8KobhU8aYRwPmuKA7DsDgXVK14v7JdQZwNH6ajSUbozcUjfiUy/exec';
+        
+        const App = () => {
+          const [screen, setScreen] = useState('login');
+          const [selectedOrder, setSelectedOrder] = useState(null);
+          const [showItemSuggestions, setShowItemSuggestions] = useState(false);
+          const [showSupplierSuggestions, setShowSupplierSuggestions] = useState(false);
+          const [isOnline, setIsOnline] = useState(navigator.onLine);
+          const [lastPoNumber, setLastPoNumber] = useState('');
+          const [currentUser, setCurrentUser] = useState(null);
+          const [loginCode, setLoginCode] = useState('');
+          const [loginError, setLoginError] = useState('');
+          const [formData, setFormData] = useState({location:'',department:'',supplier:'',category:'',item:'',itemSearch:'',description:'',quantity:'',paymentTerms:''});
+          const [orders, setOrders] = useState([]);
+          const [orderSearch, setOrderSearch] = useState('');
+          const [isLoading, setIsLoading] = useState(false);
+          const [pendingSyncCount, setPendingSyncCount] = useState(0);
+          const [isSyncing, setIsSyncing] = useState(false);
+          const [isSaving, setIsSaving] = useState(false);
+
+          // ============================================================
+          // EMPLOYEES - 21 Users (sorted alphabetically)
+          // ============================================================
+          const users = [
+            {name:'Anton Snyders',code:'1234',initials:'AS',role:'user'},
+            {name:'Cornelis Oosthuizen',code:'1111',initials:'CO',role:'management'},
+            {name:'David Jacobus Le Roux',code:'2222',initials:'DL',role:'user'},
+            {name:'Dian Oosthuizen',code:'3333',initials:'DO',role:'user'},
+            {name:'Dwayne Willemse',code:'4444',initials:'DW',role:'management'},
+            {name:'Elrie Oosthuizen',code:'5555',initials:'EO',role:'management'},
+            {name:'Erik Oosthuizen',code:'7777',initials:'EK',role:'management'},
+            {name:'Francois Verwey',code:'6666',initials:'FV',role:'management'},
+            {name:'Frihan Oosthuizen',code:'8888',initials:'FO',role:'management'},
+            {name:'Frikkie Oosthuizen',code:'9999',initials:'FK',role:'management'},
+            {name:'Gerrit Oosthuizen',code:'2121',initials:'GO',role:'user'},
+            {name:'Herman Steyn',code:'3434',initials:'HS',role:'user'},
+            {name:'Ian Oosthuizen',code:'4343',initials:'IO',role:'user'},
+            {name:'Jacques-Mare Swanepoel',code:'5656',initials:'JS',role:'user'},
+            {name:'Johan Pienaar',code:'6565',initials:'JP',role:'user'},
+            {name:'Johan Van Rooyen',code:'7878',initials:'JV',role:'user'},
+            {name:'Marcel Goosen',code:'9090',initials:'MG',role:'user'},
+            {name:'Marlene Oosthuizen',code:'0909',initials:'MO',role:'management'},
+            {name:'Paul Van Gooswilligen',code:'1313',initials:'PV',role:'user'},
+            {name:'Rikus Oosthuizen',code:'1212',initials:'RO',role:'user'},
+            {name:'Vickus Vermeulen',code:'8787',initials:'VV',role:'user'}
+          ];
+          
+          // ============================================================
+          // FLEET INVENTORY - Sorted alphabetically within each category
+          // ============================================================
+          const itemDatabase = {
+            tractor: [
+              {id:'T020',name:'Case 170 Malmesbury - Trekker'},
+              {id:'T021',name:'Case 95 Magnum 7220 CER 3891 - Trekker'},
+              {id:'T022',name:'Case 95 Magnum 7220 CER 3892 - Trekker'},
+              {id:'T001',name:'Case Digger 570SNr 1 platbek CER 7274 - Digger'},
+              {id:'T002',name:'Case Digger 570SNr 2 tande CER 7275 - Digger'},
+              {id:'T003',name:'Case Digger 580 VH CER 2773 - Digger'},
+              {id:'T023',name:'Case Magnum IH 340 CER 2972 - Trekker'},
+              {id:'T024',name:'Case Mxm 255 CER 5291 - Trekker'},
+              {id:'T025',name:'Case Puma 140 Tractor CER 6694 - Trekker'},
+              {id:'T026',name:'Case Puma 180 2024 CER 1220 - Trekker'},
+              {id:'T027',name:'Claas 657- CER 3474 2009 - Trekker'},
+              {id:'T028',name:'Claas 657- CER 6045 2010 - Trekker'},
+              {id:'T029',name:'Claas Arion 610 CER 3073 2013 - Trekker'},
+              {id:'T006',name:'Isuzu Fxr17-360 Truck CER 6293 - Lorrie'},
+              {id:'T007',name:'Isuzu SHR Truck CER 2924 - Lorrie'},
+              {id:'T004',name:'JCB 3Cx Sitemaster 2017 CER 3269 - Digger'},
+              {id:'T039',name:'JD 4020 sonder kap CER 4807 - Trekker <90kw'},
+              {id:'T019',name:'JD 4230 Virk Trekker JD - Stukkend'},
+              {id:'T016',name:'JD 4240 CER 2917 - Stukkend'},
+              {id:'T030',name:'JD 4250 1999 - Trekker'},
+              {id:'T017',name:'JD 4630 Kap no 1 CER 1342 - Stukkend'},
+              {id:'T018',name:'JD 4630 Sonder kap - Stukkend'},
+              {id:'T031',name:'JD 4640 Kap CER 2532 - Trekker'},
+              {id:'T032',name:'JD 4x4 6150B 2025 - Trekker'},
+              {id:'T040',name:'JD5325 Wingerd MetCab CER 2247 - Trekker <90kw'},
+              {id:'T033',name:'JD 6630 2011 CER 3165 - Trekker'},
+              {id:'T034',name:'JD 6920 4x4 2006 CER5425 - Trekker'},
+              {id:'T035',name:'JD 7810 CER 3724 - Trekker'},
+              {id:'T005',name:'JD Kuilvoer stroper 7550 CER 4086 - Kerwer'},
+              {id:'T036',name:'JD M6175 2016 - Trekker'},
+              {id:'T014',name:'JD Selfloper Spuit M4030 2020 - Selflooperspuit'},
+              {id:'T015',name:'JD Selfloper Spuit R4030 2015 - Selflooperspuit'},
+              {id:'T041',name:'Landini 105 no 2 CER 4356 - Trekker <90kw'},
+              {id:'T042',name:'Landini Powerfarm 105 no 1 CER 1953 - Trekker <90kw'},
+              {id:'T011',name:'MacDon M155 2021 Windrower - Macdon'},
+              {id:'T012',name:'Macdon 9350 Windrower - Macdon'},
+              {id:'T008',name:'Mitsubishi Canter Fuso Truck CER 2218 - Lorrie'},
+              {id:'T043',name:'NH Fia100/90 CER 3059 - Trekker <90kw'},
+              {id:'T044',name:'NH Fia72-86 4x4 CER 1835 - Trekker <90kw'},
+              {id:'T045',name:'NH Fia980 CER 3125 - Trekker <90kw'},
+              {id:'T046',name:'NH NHT4 75 CER 5205 - Trekker <90kw'},
+              {id:'T050',name:'NH T6020 CER 7494 no 1 - Virk trekker'},
+              {id:'T051',name:'NH T6020 CER 7496 no 2 - Virk trekker'},
+              {id:'T052',name:'NH TD5.100 no 1 PV CER 2902 - Virk trekker'},
+              {id:'T053',name:'NH TD5.110 4WD Quicke x56 2023 CER 5876 - Virk trekker'},
+              {id:'T054',name:'NH Td5.110 no 3 UV CER 6872 - Virk trekker'},
+              {id:'T055',name:'NH TD5.110 Quicke x56 no 4 VH CER 2867 - Virk trekker'},
+              {id:'T056',name:'NH TD5.110 Quicke x56 no 5 VD CER 2923 - Virk trekker'},
+              {id:'T057',name:'NH TD5.110 VD CER 4841 - Virk trekker'},
+              {id:'T037',name:'NH TM 140 CER 3371 2007 - Trekker'},
+              {id:'T038',name:'NH TM140 CER 2495 2004 - Trekker'},
+              {id:'T047',name:'NH TN75F CER 1394 - Trekker <90kw'},
+              {id:'T048',name:'NH TT3.5 2WD CER 2365 - Trekker <90kw'},
+              {id:'T049',name:'NH TT4.9 4WD CER 4204 - Trekker <90kw'},
+              {id:'T013',name:'Parsmasjien Gregoire - Parsmasjien'},
+              {id:'T009',name:'Scania Truck CER 1335 - Lorrie'},
+              {id:'T010',name:'UD Quester E53 GWE 390 Truck CER 2772 - Lorrie'}
+            ],
+            vehicle: [
+              {id:'V024',name:'Ford SC 4x4 2025 CER 5431 Frihan - Vehicle'},
+              {id:'V026',name:'Ford SC WT 4x4 2025 CER 7248 Erik - Vehicle'},
+              {id:'V008',name:'Isuzu 1.9 4x4 Cornelis CER 4181 - Vehicle'},
+              {id:'V009',name:'Isuzu 1.9 4x4 Dian 2024 CER 1518 - Vehicle'},
+              {id:'V022',name:'Isuzu 1.9 4x4 Herman CER 1670 - Vehicle'},
+              {id:'V010',name:'Isuzu 2.5 2023 CER 6585 Paul - Vehicle'},
+              {id:'V027',name:'Isuzu 2.5 2022 CER 7142 Elrie - Vehicle'},
+              {id:'V011',name:'Isuzu 2.5 CER 7148 E/CAB Gerrit O - Vehicle'},
+              {id:'V012',name:'Isuzu 2.5 EC Marlene- CER 6363 - Vehicle'},
+              {id:'V025',name:'Isuzu 2.5 Francois- CER 1512 - Vehicle'},
+              {id:'V013',name:'Isuzu 2.5 J.Ludick- CER 5745 - Vehicle'},
+              {id:'V014',name:'Isuzu 4x4 VD 2018 CER 4711 - Vehicle'},
+              {id:'V028',name:'Isuzu CER 1513 Vickus - Vehicle'},
+              {id:'V015',name:'Isuzu CER 7143 Werner - Vehicle'},
+              {id:'V032',name:'Isuzu CER 7144 NDO - Vehicle'},
+              {id:'V016',name:'Isuzu CER 7153 Anton - Vehicle'},
+              {id:'V029',name:'Isuzu DMAX 2024 Marcel- CER 3458 - Vehicle'},
+              {id:'V023',name:'Land Cruiser Gerrit CER 5762 - Vehicle'},
+              {id:'V001',name:'Land Rover disc Erik- CER 2870 - Vehicle'},
+              {id:'V002',name:'Land Rover disc Gerrit- CER 3804 - Vehicle'},
+              {id:'V030',name:'Land Rover Erik- CER 3648 - IS - Vehicle'},
+              {id:'V003',name:'Landcruiser- Ian CER 3341 - Vehicle'},
+              {id:'V004',name:'Landcruiser Stasiewa Oupa- CER 1733 - Vehicle'},
+              {id:'V005',name:'Landrover oranje- CER 3146 - Vehicle'},
+              {id:'V006',name:'Prado 2022 CER3798 GO - Vehicle'},
+              {id:'V017',name:'Toyota 2.4 VH melk - CER 6630 - Vehicle'},
+              {id:'V007',name:'Toyota 2.5 4x4 Johan R- CER 1174 - Vehicle'},
+              {id:'V018',name:'Toyota 2.5 4X4 Johan P- CER 7081 - Vehicle'},
+              {id:'V019',name:'Toyota 2.8 2025 Ian CER 6568 - Vehicle'},
+              {id:'V020',name:'Toyota 2022 CER 6609 Frikkie - Vehicle'},
+              {id:'V021',name:'Toyota 2022 CER 6743 Rikus - Vehicle'},
+              {id:'V031',name:'Toyota Hilux 2.5 4x4 J Baadjies CER 6885 - Vehicle'}
+            ],
+            equipment: [
+              {id:'E063',name:'Bakkies trailers/ Sleepwaens - Trailer'},
+              {id:'E006',name:'Bossiekapper Falcon PV no 1 - Bossiekapper'},
+              {id:'E004',name:'Bossiekapper Falcon VH no 2 - Bossiekapper'},
+              {id:'E008',name:'Bossiekapper Nobili blou VD - Bossiekapper'},
+              {id:'E005',name:'Bossiekapper Sonderend PV no 1 - Bossiekapper'},
+              {id:'E007',name:'Bossiekapper Sonderend VH no 2 - Bossiekapper'},
+              {id:'E011',name:'Dieselkar Moov - Dieselkar'},
+              {id:'E010',name:'Dieselkar Rond - Dieselkar'},
+              {id:'E012',name:'Dieselkar Vierkantig - Dieselkar'},
+              {id:'E013',name:'Generators - Generator'},
+              {id:'E034',name:'Hak Blanton 23 tand - Ploeg/hak'},
+              {id:'E033',name:'Hak Innovator 9 tand - Ploeg/hak'},
+              {id:'E037',name:'Hak Trash Field Span 5.5m - Ploeg/hak'},
+              {id:'E072',name:'Heli wrapper - Wrapper'},
+              {id:'E061',name:'Kuilvoerwaens - Trailer'},
+              {id:'E015',name:'Lusern hark 12 wheel V-Rake - Lusernhark'},
+              {id:'E014',name:'Lusern hark Kuhn CR 300 GM - Lusernhark'},
+              {id:'E043',name:'Macdon 9350 Haybine & Kneuser 920 14FT - Snytafel'},
+              {id:'E040',name:'Macdon 9350 Snytafel 972 21FT - Snytafel'},
+              {id:'E044',name:'Macdon 9350 Snytafel 972 30FT - Snytafel'},
+              {id:'E042',name:'Macdon M155 Auger header A40D 18FT - Snytafel'},
+              {id:'E045',name:'Macdon M155 Snytafel FD135 35FT - Snytafel'},
+              {id:'E046',name:'Macdon Sleep Haybine snyer 5020 Tongue 18FT - Snytafel'},
+              {id:'E073',name:'Mchale wrapper 991 B - Wrapper'},
+              {id:'E074',name:'Mchale wrapper 991 BC - Wrapper'},
+              {id:'E059',name:'Meelwa Epol no 1 CER 2398 - Trailer'},
+              {id:'E060',name:'Meelwa Epol no 2 CER 3906 - Trailer'},
+              {id:'E024',name:'Menger Cliff Mixmaster Blou - Menger'},
+              {id:'E020',name:'Menger Delaval - Menger'},
+              {id:'E021',name:'Menger Keenan - Menger'},
+              {id:'E022',name:'Menger Seko 13m3 2002 - Menger'},
+              {id:'E017',name:'Menger Seko 13m3 2002 VD - Menger'},
+              {id:'E019',name:'Menger Seko 17m3 2008 - Menger'},
+              {id:'E018',name:'Menger Storti Dunker Tvs80 UV - Menger'},
+              {id:'E016',name:'Menger Storti Husky 16M3 - Menger'},
+              {id:'E023',name:'Menger Storti Labrador 16M3 - Menger'},
+              {id:'E025',name:'Milk Taxi - Milktaxi'},
+              {id:'E041',name:'Moco JD Sleep Haybine snyer 946 13FT - Snytafel'},
+              {id:'E058',name:'Parswaens - Trailer'},
+              {id:'E027',name:'Planter Ausplough 36 tand - Planter'},
+              {id:'E031',name:'Planter Equaliser 25 tand 7500E No 2 - Planter'},
+              {id:'E030',name:'Planter Equalizer 25 tand 7500E No 1 - Planter'},
+              {id:'E032',name:'Planter Equalizer Precision SL 6 Mielies - Planter'},
+              {id:'E028',name:'Planter John Deere 1560 Notill 4M - Planter'},
+              {id:'E029',name:'Planter John Deere 1560 Notill 6M - Planter'},
+              {id:'E026',name:'Planter John Deere 1850 Standerton Notill 12M - Planter'},
+              {id:'E036',name:'Ploeg Degelman Pro Till 20 - Ploeg/hak'},
+              {id:'E035',name:'Ploeg John Shearer 5GP 22 plates no 1 - Ploeg/hak'},
+              {id:'E038',name:'Ploeg John Shearer 5GP 22 plates no 2 - Ploeg/hak'},
+              {id:'E039',name:'Ploeg John Shearer 5GP 22 plates no 3 - Ploeg/hak'},
+              {id:'E009',name:'Sicma Flail Mulcher & Roller UTR280 SSK - Bossiekapper'},
+              {id:'E065',name:'Sleepwaens vir trekkers - Trailer'},
+              {id:'E048',name:'Spuit Cima Spray Pump - Spuit'},
+              {id:'E049',name:'Spuit Hardi Sprayer 4000L 2011 - Spuit'},
+              {id:'E047',name:'Spuit Nobili Onkruidspuit - Spuit'},
+              {id:'E051',name:'Strooier Amazone ZAV 2000 2019 - Strooier'},
+              {id:'E053',name:'Strooier Amazone ZAV2000 2023 - Strooier'},
+              {id:'E050',name:'Strooier Joskin misstrooier 19M3 - Strooier'},
+              {id:'E052',name:'Strooier Radium no 1 5M3 - Strooier'},
+              {id:'E054',name:'Strooier Radium no 2 5M3 - Strooier'},
+              {id:'E068',name:'Strooier Sulky 2 - Verkoop'},
+              {id:'E062',name:'Tipkarre - Trailer'},
+              {id:'E064',name:'Truck Brocker Sleepwa CER 1956 - Trailer'},
+              {id:'E056',name:'Truck Vlottenberg Sleepwa CER 3289 - Trailer'},
+              {id:'E066',name:'Vangwa 16 Ton OAgri 2020 - Vangwa'},
+              {id:'E067',name:'Vangkar 16 Ton PS 2023 - Vangwa'},
+              {id:'E057',name:'Venter CER 1575 - Trailer'},
+              {id:'E069',name:'Waterkar 8000L no 1 - Waterkar'},
+              {id:'E070',name:'Waterkar 6000L no 2 - Waterkar'},
+              {id:'E071',name:'Waterkar Jacto 2000L No3 - Waterkar'},
+              {id:'E001',name:'Welger Baler RP202 - Baler'},
+              {id:'E002',name:'Welger Baler RP245 no 1 - Baler'},
+              {id:'E003',name:'Welger Baler RP245 no 2 - Baler'},
+              {id:'E055',name:'Wingerde Top M Bakwerke 2025 - Topper'}
+            ],
+            other: []
+          };
+          // ============================================================
+          
+          // Suppliers sorted A-Z
+          const defaultSuppliers = ['4x4 Mega World','a - Z Swellendam','A TO Z STORE','A&S Onderdele','Aan De Leisure Collection','ABS Genetics','ABSA','ABSA Vehicle Finance','ABUTI 1076 CC','ACCESSORIES','ACKERMANS','ACS Accounting Trust #Pinion','ACS Auditing','ACS CONSULTING PTY LTD','ACS Consulting Trust','Acs Empowerment Solutions (Pty) Ltd','ACS Online','ACTEBIS T/A ELS BOUERS EN WATERDIGTING','ACTION ALUMINIUM & BLINDS','Active Pest Control','ADENDORFF MACHINERY','Adidas','ADONAI FUNERAL HOME','AECI/ Nulandis','AFGRI ANIMAL FEEDS','Afgri Equipment (Afgri Operations (Pty) Ltd T/A)','AFISWITCH','African Grain Investment (Pty) Ltd','Afriforum','Afrihost','Afripumps','Agramex Sa','agri labour prationioners pty ltd','Agri Solsec','Agri Tech Solutions','AGRI WORLD','AGRI-PHYTO','Agribisi (Pty) ltd','Agribisi Consultrading CC','AGRIBISI CONSULTRADING CC - SAAD','AGRICO FRI05-01-AR','Agrico FRI05-03-AR Kapitaal','Agricol','Agricultural research council/ Landbou NR LNR','AGRISAKE','AGRISETA','AH Marais Seuns Robertson (Edms) Bpk','AH Marais Seuns Swellendam (Edms) Bpk','AH Niemand','AHN VERVOER & IMPLEMENTE','Airpower Western Cape Pty Ltd','ALBERTO\'S BEGRAFNISDIENSTE','AllanGray','ALLIES TOWING AND FORKLIFTS','ALLTECH','ALLTECH t/a KEENAN','Alon Corporation (pty) Ltd','Alpha Egineering (IC Bux CC T/A)','Alterheim Trust','Amazon','Amazone','ANDRE BLOEM AGRI LABOUR PRACTITIONERS','Andre Bloem Industrial Relations','ANGORA SUBGEBIED','Animed Agri','ANNA SM JAMES','Anthony Anti-Corrosion Coatings & Supplies','Anton Conradie Vervoer Bk','ANZ CHEMICALS','ApprovalMax','AQUASYNC PTY LTD','AR Motors CC t/a Robertson Toyota','ARISA PTY LTD','ARM Express','Armino Feeds (Pty) Ltd','ARUM VALLEY BOERDERY','Ashton Inplemente BK','Ashton Trekkerdienste h/a PC Garage','ASSETACCOUNTANT','ASTRON','Atlantic Fertilizer','Atlantic Oil','Auto Clinic','Auto Cooling Solutions CC','Auto Landy (Pty) Ltd','Auto Superb','B&M Ford','Barloworld Equipment Southern Africa','Barnlab (Pty) Ltd t/a Tanqua Voere (2% Discount)','BARVALLEI PERSONEELDIENSTE','Barvallei Towing','BASSON & SEUNS VERVOER','Basson en Seun Vervoer','Bay Compressors & HydraulicServices','Bell SA','BEMLAB','Best price supermarket','Bester Feed & Grain (Pty) Ltd','Bester Voer','BezUys Boerdery','Bierman Janeke Optometrists Swellendam','BIG SKY INTERCITY','BIOFARM','BJP SUPPLIES CC','BKB BEPERK','BLUE VALLEY SPUR','BLUE WAVE ZONE PTY LTD','BM POWER','BND INGENIEURSWERKE','Bokkeveld Partnership','Boland Bearings','BOLAND ORGANIC SOLUTIONS','Boland Organics','Boland Roofing','Boland Toilet Services Pty Ltd','BOLAND WENDYS PTY LTD','Boland World Travel','Bonnievale Abattoir','Bonnievale Apteek','Bonnievale Build & Save','Bonnievale CCC','Bonnievale Handelshuis BK','BONNIEVALE LANDBOU VERENIGING','Bonnievale NG Kerk','Bonnievale Slagtery BK','Bonnievale Spar','Bonnievale Wynkelder (Pty) Ltd','BONSAT','BONVIK PTY LTD','BOORGATWERKE','Bosman Adama','BRANDED SIGNAGE & PRINGTING','Branson (14% Discount)','Bredarsdorp Auto Electrical','Breede Gouritz','BREEDEKLOOF WYN EN TOERISME NPC','Breedenet Wifi','BREEDEVALLEI MUNISIPALITEIT','Breerivier Besproeiing','Breerivier Meganies','Breerivier-Suid Trust','Brians Auto','Britz Compressors & Hydraulics','BROCKER MEAT','Brocker Sweiswerke','BURQUIP INTERNATIONAL PTY LTD','BVPD EDMS BPK','C De Villiers Elektries (Carel)','C EN J Beleggings','C Van Gent','CALEDON AUTO ELECTRICAL','Caledon Landboudienste','Calf Grow Sa (Pty) Ltd','CANFRED COMPUTERS SWELLENDAM','Cape coffee','Cape Feed and Grain','Cape Lime (Pty) Ltd','Cape Tree Services','CAPE UNION MART','CASLAD AGENCIES CC','Cattle For Africa','CBR CARRIERS','CCC MOTORCYCLES','CD AUTO','Cellcool cc','Celmax','Ch Fire Services','Chas Everitt Southern Cape','Chatgpt Sub','CHATZ2 SWELLENDAM','Checkers','Chop Chop Recyclers','Christelles Bistro','CJ COOLING','Claude AI','CMC INTERNATIONAL','CNH Capital','CNH Industrial/ Northmec','Coastal hire Swellendam','Coastline Glass & Aluminium','Coastline Gutters','Constantia Kunsmis (Edms) Bpk','CONSULT MOMENTUM','Cool Core Radiators & Airconditioning CC','Cooperative Resources Int (Ac Verspreiders)','Country Butcher','COUNTRY CENNECTION','Cp Concrete Pty Ltd','CPD CAMPUS','CRAFFORD MEESTER BOUERS BK','CRAFT','Creative Covering','Crosscape Precision Farming Equipment (Pty) Ltd','CRV','CRV XSEED EDMSP BPK','CT 3 AGRI PTY LTD','CTM','CTN SOMERSET WEST','Cultigrain (Pty) Ltd','CYBERVENDIT','Da-Ri tipper BK','DAB MARKETING','Dairy Hoof Health','DAIRY JUNCTION PTY','Dairytech','DANDYSHELF 12 (PTY) LTD','DATAMARS','Davison Construction','De Heus (Pty) Ltd','De Jager Elektries','DE JAGER KLERE','DE RUST BOERE (PTY) LTD','DE WINGERD B & B','DEALERNET PTY LIMITED','Delaval','Department of employment and labour','Deutz Dieselpower','DG CARRIERS','DGS PLANT HIRE','Dialstat trading 91 Pty Ltd TA ALLFLEX','Diamant Trust','DIE BET-EL TRUST','DIE SOEKERTJIE','Diesel Kliniek','Dirkie Steyn / TA Voorhuis Trust','Discovery','DNA','Dokter Van Zyl & Vennote Swellendam','Doornvlei Jerseys BK','Dorman Projects','Dorwald Vervoer Edms Bpk','DOTTEC','DP DE WET','Dpc Boerdery Pty Ltd','Dr Braam Esterhuyse','Dr C De Vries','DR DEWALD COOLEN','DR JC BADENHORST','DR LINDE','Dr Malan -Swellendam Diere Hosp (25% Discount Meds)','DR WINTERBACH TANDARTS','DRAKENSTEIN TRAFFIC FINES','Drive Select Traders','DRS SCHNETLER, CORBETT & VENNOTE','DUIVENHOKS DIESELDIENS BK','EC KOCH BOERDERY','ECO FLOW BIN AFRICA','Eco-Sure Chemicals','Ecolab Pty Ltd (10% Discount)','Eerstebos Boerdery','Eezifit Canvas (Swellendam Seile en Stoffering)','ELEGANT EMBRACE','ELIANTHE GASTEHUIS','ELIM SLAGHUIS','Elisma Muller','EMASPHERE','Embrio Plus CC','Emetalscape','EMV AFRICA PTY LTD','ENGEN MULTI MOTORS','Eram Boublok en Vervoer','Escape Gear','Eskate (Pty) Ltd','Eskom','Etse Electronics (Pty) Ltd t/a Farm Ranger','Eureka Meulens Pty Ltd','EVETECH PTY LTD','EXPEDITION NORTH','EXPLICATUS CONSULTING','Fabrinox','FAIRVIEW BOERDERY EDMS BPK','Falcon Inflatables Pty Ltd','Fathom','FAWU','FAWU Workers Union','Feedmin','Ferrotech','FIDELITY ADT','FIELD MARGIN','FIELD MARGIN LTD','Filco Parts CC t/a Autozone Paarl','FILCO PARTS CC t/a AUTOZONE SWELLENDAM','FINELINE GROOVING','FIRE BUSTERS','First Shop','Flawless Engineering (Pty) Ltd','FLEX-IT ENGINEERING','Flocheck','FLORA JUBILEE','Ford Credit','Formufeed CC','foschini retail group','Four Lakes','Fourie Boerdery','Fourie Dairy Management DMC','Fourth Q Trust','Frank Vos Worcester','FREEDOM OF MOVEMENT','Frikkie Oosthuizen Trust','FULL HOUSE','Fusion Properties 51 CC','GAME','GANSBAAI MARINE EDMS BPK','GAS FLAME CC','Gateway Offroad Centre','Gawie Van Dedeventer Vervoer','Ge Dairy Supplies (10% Discount)','GELMAR','Gelukshoop Boerdery','Genimex','GEORGE DIEREHOSPITAAL','GET Scrapmetal','GForce Swellendam','GJ Elektries','GJ Odendal- Mogenrood plaas','GKO HEALTH SERVICES','GLASS HERO','Gm Grondverskuiwing','GREATER OVERBERG FIRE','Green Span Fertilizer','GROEN KAROO BESPROEIING','GROENBERGENVIRO PTY LTD','Groenewald L, Rietkuil','Grow Green Plant Hire','Grubuild cc t/a Shelving king','Gs Operation (8% Discount)','GUARDRISK INSURANCE COMPANY','H & Chips Basket','HABITAT MATURE TREE NURSERY','HANANIAH HEALTH SERVICES CLINIC','HANDLES','HAPPY LIFE STORE','HARRY\'S WELDING WORKS','HEADBORDS FOR AFRICA','HEALTHY WORKER CLINIC','HEDRON TAX CONSULTING AND PUBLISHING CC','Heins Elektries (2.5% Discount)','HELDERBERG GALVANIZING CC','Helpmekaar Onderdele','HERHOLDTS','Heritage association','Hessequa Abattoir (Pty) Ltd','HESSEQUA MUNICIPALITY','HESSEQUA PROTECTION SERVICES','HESSEQUA VERKEER','Hexagon Industries Pty Ltd','Heyneman Yamaha','Hi Way Bande','HI-handyman','hi-tec','High Rock Trading 88 BK','Hiremax','Hitech Alarms','HL MATTHEE T/A HENRY ELEKTRIES','Hn Bruwer Boerdery Edms Bpk','HN Landboukontrakteurs BK','Hoek\'s Bakwerke CC','Hoeks Toyota Pty Ltd','Hoereesdrift Trust','Hortec','HUGENOTE TONNEL','Humefert Manufacturing','HURWITZ FARMING PTY LTD','Hydraberg Hydraulics & Pneumatics & Engineering','Hyper Doors','Incredible Connections','Independent Dynamic Solutions','Indigo Rain Trading 2 CC- LM Vervoer','INDUSGROW','INFANTA 4X4','INFANTA INFLATABLES','InteliGro (Pty) Ltd','INTERBILT TRUCK REPAIRS','Intercape','INTERCAPE MAINLINER TICKET','InterDAF','Intertown Tran Port','IQTECH','Irricon','Isuzu Swellendam','J GROENEWALD','J Schreuder','JACO VAN EEDEN','Jacques Burger Tuindienste','JAKES GERWEL ENTREPENEURSKOOL','Jakob Meyer','James Human','JAN HARMSGAT RESTAURANT','Janeza','JANNIE GROENEWALD','JB Vervoer','JBH WHEELS','JC FIELD SERVICES CC','Jc Implemente','Jc Pieterse Ingenieurs Pty Ltd','JCS Trust t/a JC SLAGTERY','Jd Implemente','Jerome Februarie','JJ\'S WOOL & STUFF','Jjc Konstruksie','Jje Auto Mech','JMR TRANSPORT SOLUTIONS (PTY) LTD','Joh-Lou Transport (PTY) Ltd','JOHAN BROODRYK','Johan Broodryk T/A Gelukshoop Boerdery','Johan Swart Angora','Johan Van Der Merwe','Johannes Steyn','Jorge Attorneys','JS SATELITE INSTALLERS','JU STREICHER EDMS BEPERK','JUBILI BOERDERY PTY LTD','Kaap Agri 057280/001 Maandrekening','Kaap Agri 057280/002 Produksierekening','Kaap Agri via Frikkie Oosthuizen Trust','Kaapse Agri Wergewersorganisasie','KARCHER','Karoolskraal BK','Kattedraai (Edms) Bpk','Kemach Equipment Pty Ltd JCB','kenako sport','KEY-FIX','KH Trekkerdienste Bk','Khoi San Gras (Jan Jansen)','Khula Farms','KING PRICE','Kingwill Landboudienste','Kirloskar Engines South Africa (Pty) Ltd','KNIPE & KNIPE VENNOOTSKAP','KOBUN & JOHANE STEMMET VERVOER','Komtag Plastics','Kosmos Verkoeling','KOUGA MUNICIPALITY','Krouwkams prokureurs','KUYLER\'S BAKWERKE','Kynoch','L & L Staalkonstruksies','L LE ROUX TRADING AS LOUIES LE ROUX VERVOER','La Pop Materiaalmark BK','Lactalis South Africa (Pty)Ltd','LAFRAS VENTER TRADING','LANGEBERG BANDE (EDMS) BPK','LANGEBERG ELEKTRIESE MEGANIESE INSTANDHOUDING','LANGEBERG GRONDWERKE','Langeberg Municipality','LANGEBERG PRE-PAID ELEKTRISITEIT','Langeberg Teels BK','Langford Power Pty Ltd','Legg & Wessel (Pty) Ltd','LERI VAN WYK','LEVI\'S','LG STAALWERKE','LJ van Eeden Boerdery','LL TECHNICAL SERVICES','LM JOOSTE T/A WYNLAND RUBBER VOERBAKKE','Loots','LORETTA\'S','Louis Le Roux Vervoer','LOUMELIZE TRUST','LOUW & STEYN','LWO','M Maree','M&G Automotive','Marais Bakwerke BK','Marelo Payne Graanhandelaars Pty Ltd','Massamatic Pty Ltd','MASTER LIFT SERVICES','MAVU BIO TECHNOGOLIES PTY LTD','Mc Agri','Md Plumbers','MEDICLINIC VERGELEGEN','Melach Biotechnologies','MERIEUX NUTRISCIENCES','Merwannes Lugversorging','Mi Stoffeerders','MICROSOFT','Midas','MIDDELRIVIER BOERDERY PTY LTD','MILADY\'S','Mirlem IE (Pty) Ltd (Robertson Abattoir)','MJ KEMP','Mj Odendaal Boerdery Bk','MJ STOFFEERDERS','MKM CONSULTING SERVICE','Ml Heyns','MOHAMMED','Momentum','Montagu Toyota','MOOV Fuel Pty Ltd','Moreson Grondverskuiwers','Mr Price Home','mr woodworx','Multilec','MULTISHADE','Na Die Oes Boerdery Trust','Nashua- Hybricode (Pty) Ltd','NATIS','NATKO CATLLE RAILS &HUNTING RIGS','NDLOVU FENCING LTD T/A STAFIX','NETWERK KOERIERS','Nexgro Bemarking (Pty) Ltd','Nexus 21 CC','Nexus vervoer','NEXUSAG 37 PTY LTD','NG KERK VANDERMERWE','Nik Tech Bulgaria','Nitrohoska','NMI TOYOTA','NOBLES TRANSPORT SERVICES','NOORDWES DAMME','Nordale Landgoed','NORTHBOUND AUDIT','Northen Keys','Noukloof Boerdery BK','NSF AFRICA PTY LTD','NUBE TECHNOLOGIES PTY LTD','Nutribasics','NUWESTROOM TUINSENTRUM','O@M Netting','Oak Tree Trp','Oakhurst Kliniek','Octavoscene (Pty) Ltd (Weskaap)','OENA ESCAPES','Og Bekker','OLDU ENGINEERING AND IMPLEMENTE PTY LTD','OO BOOM SAAG EN TUINDIENSTE','Oosthuizen Trust','ORBIT BOLAND WORCESTER','OU MEUL RIVERSDAL','OU MEUL RIVIERSONDEREND','Oudepont Boerdery','Outeniqua Refrigeration','OVER-SUID BOERDERY','Overberg Aerial Spraying Pty Ltd','Overberg Agri Lusern rekening 803056','Overberg Agri Maandrekening 154164','Overberg Dierehospitaal','Overberg Lightning','OVERSTRAND MUNISIPALITEIT','Oversuid Boerdery Edms Bpk','P BEYERS','P&B Limeworks','P.P Du T. Jordaan','Pannar Saad (Edms) Bpk','Parrot Products','Pasierbek Holdings Pty Ltd T/a Tony\'s','Pathcare','Paymaster People Solutions','payMyFines','PCP TACTICAL ARMS','PEP STORES','PERDIGON','Perdigon Pty Ltd','Permanent Roofing','PEST CONTROL SOUTHERN CAPE','Pest Elite','PEST MANAGEMENT ACADEMY PTY LTD','Petrus Joubert t/a Sebenza Swellendam','Petrus Swart Landboudienste (edms) Bpk','Pick n Pay','PIET MOSES','Pieter Beyers','Pieter JB Crous','Pieter Steyn','Pieterse Inge Werke','Pietie Uys','PIETTRUS CONSTRUCTION PTY LTD','PINION KONFERENSIE MAART 2024','PIONEER','PIZZA WORLD','PJE Trading','PLATSAK','Platteland Bakwerke','Platteland Motors & Implemente Pty Ltd','PNA Swellendam','POTGIETER BROERS','Power Steering solutions','Power Transformers','PR Swart Boerdery BK','Premium Agri Supplies (Pty) Ltd','Premium Computers','Pretorius Velddienste 001 Pleasantview','Pretorius Velddienste 002 Ontwikkeling','Pretorius Velddienste 003 Voorhuis','Pretorius Velddienste 004 Vaandrigsdrift','PROPSHAFT ENGINEERING','Provimi SSA (Pty) Ltd','Pss Distributors','PWC','Quipsell','R A MOTORTRIMMERS PTY LTD','R&S Communicatiion','RACEPARTS','RAIMONDI\'S','RCL FOODS','RENTOKILL','REPBLIC OF SWELLENDAM','REXEL','Rfid Pty Ltd','Riaan Le Roux','Riversdal Labratorium','Riversdal Toyota','RMD','ROBERT ARENDSE','Robertson Abattoir (Pty) Ltd','ROBERTSON ASSET PROTECTION SERVICE','Robertson Auto Elektries','Robertson Besproeiing','ROBERTSON GARDEN WORLD','ROBERTSON RISK','ROBERTSON TIMBERS','ROCK & STONE MEMORIAL (PTY) LTD','ROLA FORD BREDASDORP','Rola Ford Robertson','Rola Ford Swellendam Auto Pty Ltd','Ross Air specialized Helicopter Services','Rotary Park','Rotorworx','Rpm Drilling','RPO Wes-Kaap','RRT Vervoer BK','RUGGENS BOERDERY BK','RUGGENS LANDBOUVERENIGING','SA Compress','SA NATIONAL ROAD AGENCY SOC','SA Premix','SA STAMBOEK','SafeQuip','SAICA','Salaried employees','SAMANGO REST PTY LTD','Sams Woodwork','SANDYSHELD 12 (OTY) LTD','SANLUCAR SA CITRUS PTY LTD','Santam','SARS','SCANIA SA','Schoongezicht Boerdery','SEAKOR','Sedick Larney','Sekutec Systems','Semex','SENQUE ROBERTSON QUARTER','SERVICESTACK PTY LTD','Sew -Eurodrive (Pty) Ltd','SFS BOERDERY (EDMS) BPK','SHELVING KING','SHOVEL BRICKS AND CONCRETE (PTY) LTD','Siena Human','Signs & stamps','SIRAGO GAP COVER','Sk Loodgieters','Skaarland Ingenieurswerke','SKOONHUYS DROE MATVERSORGING','Sky High','SOIL WISE','SOLDERSKRAAL BK','Solution / Conradie Landboudiens','Sonderend Bande Hi-Q','SONDEREND STORE CC TA Ploebak','South African Post Office','southern ambition','Southern Oil (Pty) Ltd (SOIL)','Spec savers','Specialized Animal Solutions','Spilhaus','SSB Transport CC','SSK','SSK 3441A1 Sentraal-suid','SSK 3441A2 Sentraal-suid','SSK 3441A3 Sentraal-suid','SSK 3441G1','SSKA3','ST Couriers','Steel & Pipes for Africa (Pty) Ltd','STEFAN DU TOIT','STELLENBOSCH UNIVERSITEIT','STELLENBOSCH VERKEER','Steven Heneke PDP','STOFFEERDERS PTY LTD','STOVE & HEATER CENTRE','Strapping And Profile','STREICHER GRAIN TRADING CC','STRYDOM ARMATURE WINDERS','SUCCESSIONS','SUIDKAAP LEWENDEHAWE','Sun Exchange Pty Ltd','SUZANI STEYN PHYSIOTHERAPY','Sw Pack','swd autospa','SWD Bandediens (Tyremart Swellendam)','SWD Bearings (Pty) Ltd','SWD Build','SWD Connect (Iswcorp (Pty) Ltd (T/A)','SWD ELEKTRIES EDMS BPK','SWD MOTORS PTY LTD','SWD Skrynwerke','Swd Staalwerke Pty Ltd','SWD Tech Solutions','SWD Verf & Decor','Swellendam Apteek / Topharm Apteke','Swellendam Auto Elektries','SWELLENDAM BEGRAFNISDIENSTE','Swellendam Canopies','SWELLENDAM CHECKERS','SWELLENDAM ERFENIS','Swellendam Grassnyers','Swellendam Hospitaal','SWELLENDAM MEUBELMARK','SWELLENDAM MUNISIPALITEIT','SWELLENDAM SKOU','Swellendam Supa Quick','Swellendam Superspar','Swellendam Verf & Dekor (Edms) Bpk','SWELLENDAM VERKEER','Swellenfruit Packing','Swellenfruit Packing (Pty) Ltd','Sydney Bouspan','Sydney Machacha','Takealot','TANKWA ENTERPRISES PTY LTD','Taurus','Technifarm (Pty) Ltd','Teclogix CC','TECMO AUTOMATION PTY LTD','THE CAPE PANORAMA LODGE','The courier guy','THEO MOUTON','Theunis Human BK t/a Human Landboudienste','Thornlands Transport (Edms) Bpk','TIGER WHEELS','Time Freight Pty Ltd','TINUS OLIVIER ARCHITECTURAL SERVICES','TJ Frick','TJF LANDBOUDIENSTE PTY LTD','TOMCAT CHIPPERS','TOP CONNECT','Total Pipeline Industries EC Pty Ltd (TPI)','TRACKER','Tractronics Landboudienste (Pty) Ltd','Tradouw Jersy Landgoed','Traffic department fees','Transcape Steel','tune2Perfection','Tunica Trading 155 (Pty) Ltd T/A PG Glass','TVM Konstruksie','TYREWORX','Ubusi Beekeeping Pty Ltd','UD Trucks Cape Town','UD TRUCKS WORCESTER','UDTRUCCKS','Unigrain Commodities EDMS BPK','Unigro Financial Services Pty Ltd','UNIVERSITEIT VAN PRETORIA','UNLIMITED CONECTION','URBAN TOWING','UTOPIA','Vaandrigsdrift Trust','Vallei Organies BK','Van Breda & Associates','Van Breda Agri','Van Graan Slootgraafdienste BK','Van Niekerk & Linde','Van Rensburg Boerdery en Vleis Sentrum (Pty) Ltd','VAN RYNEVELD FAMILY TRANSPORT','VAN SCHOOR GATE pTY LTD','Van Staden Elektries','Van Zyl & Hofmeyr Ing','VAN ZYL TRANSPORT','Van Zyl Visser Personeel Dienste','Vaps Consultancy','Vasvat Plaaswerk','Vd Merwe Oogkundiges','Veg Supreme','Venter Trust','Verland Trust','Vetlab','Viking 30399 Wingerd','Viking 30400 Saai/ plant afdeling','Viltech Diesel Tegniese Dienste','VITAM INTERNATIONAL','Vivan Ingenieurswerke','Vleissentraal Kaap (Edms) Bpk','Vodacom','Voermol','Voorhuis Trust','VZR Agri (Pty) Ltd','Wagensboomsheuwel Dieter de wet','Waikato SA','Water & Sanitation','WC Strydom','WC Timber Products (Pty) Ltd','Weksmans Attorneys','Welshire Boerdery Bk','Wenkem SA (Edms) Bpk','Werda Brdery','Wesbank','WEST CAPE MOTOR SPARES PTY LTD','Westelike Provinsie Oesbespuiting','Western Cape Cellular','WH AUCTIONEERS','WILLTECH TEGNIESE DIENSTE','Windstrom','WINELANDS FIRE PROTECTION ASSOCIATION','Winelands Plastics','Wolfkraal Landgoed BK','WOOLWORTH','Worcester Gas & Sport','WORCESTER GEARBOX CENTRE','WORCESTER HOSPITAAL','Worcester Radiator Service Centre','WORCESTER RADIOLOGIE','World Wide Sires/ W Pringle export','Wter Bakwerke','WYNBERG TRAFFIC FINES','XERO','Xero South Africa (Pty) Ltd','Xpanda','Zoetis South Africa','Zonderend Valley Farm','Zonderendrivier water user association','ZWUA RESTORING THE RIVIERSONDEREND'];
+          // Farms sorted A-Z
+          const farms = ['Angora','Diamant','Drew','Grootdam','HO','Leeufontein','Pleasantview','Samuraai','Uitvlugt','Vaandrigsdrift','Voorhuis'];
+          // Departments sorted A-Z
+          const departments = ['Graan','Other','Suiwel','Wingerd'];
+
+          // ============================================================
+          // API FUNCTIONS
+          // ============================================================
+          const fetchOrders = async () => {
+            setIsLoading(true);
+            try {
+              const response = await fetch(`${API_URL}?action=getOrders`);
+              const data = await response.json();
+              if (data.success) {
+                setOrders(data.orders);
+              }
+            } catch (error) {
+              console.error('Error fetching orders:', error);
+              // Fallback to localStorage if offline
+              const savedOrders = localStorage.getItem('farm_po_orders');
+              if (savedOrders) setOrders(JSON.parse(savedOrders));
+            }
+            setIsLoading(false);
+          };
+
+          const saveOrder = async (orderData) => {
+            setIsSaving(true);
+            
+            // If offline, queue the order for later sync
+            if (!navigator.onLine) {
+              window.OfflineQueue.add(orderData);
+              setPendingSyncCount(window.OfflineQueue.count());
+              // Also save to local orders for immediate display
+              const updatedOrders = [orderData, ...orders];
+              localStorage.setItem('farm_po_orders', JSON.stringify(updatedOrders));
+              setOrders(updatedOrders);
+              setIsSaving(false);
+              return;
+            }
+            
+            try {
+              const response = await fetch(`${API_URL}?action=addOrder&order=${encodeURIComponent(JSON.stringify(orderData))}`);
+              const data = await response.json();
+              if (data.success) {
+                // Refresh orders list
+                await fetchOrders();
+              }
+            } catch (error) {
+              console.error('Error saving order:', error);
+              // Queue for later sync
+              window.OfflineQueue.add(orderData);
+              setPendingSyncCount(window.OfflineQueue.count());
+              // Save locally as backup
+              const updatedOrders = [orderData, ...orders];
+              localStorage.setItem('farm_po_orders', JSON.stringify(updatedOrders));
+              setOrders(updatedOrders);
+            }
+            setIsSaving(false);
+          };
+
+          const getNextPONumber = async (userInitials) => {
+            try {
+              const response = await fetch(`${API_URL}?action=getLastPONumber&userInitials=${userInitials}`);
+              const data = await response.json();
+              if (data.success) {
+                return userInitials + '-' + String(data.lastNumber + 1).padStart(4, '0');
+              }
+            } catch (error) {
+              console.error('Error getting PO number:', error);
+            }
+            // Fallback: count from current orders
+            const userOrders = orders.filter(order => order.userInitials === userInitials);
+            return userInitials + '-' + String(userOrders.length + 1).padStart(4, '0');
+          };
+
+          useEffect(() => {
+            const savedUser = localStorage.getItem('farm_po_current_user');
+            if (savedUser) { 
+              setCurrentUser(JSON.parse(savedUser)); 
+              setScreen('form'); 
+            }
+            
+            // Update pending sync count
+            setPendingSyncCount(window.OfflineQueue ? window.OfflineQueue.count() : 0);
+            
+            // Online/offline handlers
+            const handleOnline = async () => {
+              setIsOnline(true);
+              // Sync queued orders when back online
+              await syncOfflineOrders();
+            };
+            const handleOffline = () => setIsOnline(false);
+            
+            window.addEventListener('online', handleOnline);
+            window.addEventListener('offline', handleOffline);
+            window.addEventListener('syncOfflineOrders', syncOfflineOrders);
+            
+            return () => {
+              window.removeEventListener('online', handleOnline);
+              window.removeEventListener('offline', handleOffline);
+              window.removeEventListener('syncOfflineOrders', syncOfflineOrders);
+            };
+          }, []);
+          
+          // Sync offline orders to Google Sheets
+          const syncOfflineOrders = async () => {
+            if (!window.OfflineQueue) return;
+            
+            // Prevent concurrent syncs
+            if (window._isSyncing) return;
+            window._isSyncing = true;
+            
+            const queue = window.OfflineQueue.getAll();
+            if (queue.length === 0) {
+              window._isSyncing = false;
+              return;
+            }
+            
+            setIsSyncing(true);
+            let syncedCount = 0;
+            
+            for (const order of queue) {
+              // Double-check order is still in queue (not already synced)
+              const currentQueue = window.OfflineQueue.getAll();
+              const stillPending = currentQueue.find(o => o._queuedAt === order._queuedAt);
+              if (!stillPending) continue;
+              
+              try {
+                const response = await fetch(`${API_URL}?action=addOrder&order=${encodeURIComponent(JSON.stringify(order))}`);
+                const data = await response.json();
+                if (data.success) {
+                  window.OfflineQueue.remove(order._queuedAt);
+                  syncedCount++;
+                }
+              } catch (error) {
+                console.error('Failed to sync order:', order.poNumber, error);
+                break; // Stop syncing if we hit an error
+              }
+            }
+            
+            setPendingSyncCount(window.OfflineQueue.count());
+            setIsSyncing(false);
+            window._isSyncing = false;
+            
+            if (syncedCount > 0) {
+              await fetchOrders(); // Refresh orders list
+            }
+          };
+
+          useEffect(() => {
+            if (currentUser) {
+              fetchOrders();
+            }
+          }, [currentUser]);
+
+          const handleLogin = () => { 
+            const user = users.find(u => u.code === loginCode); 
+            if (user) { 
+              setCurrentUser(user); 
+              localStorage.setItem('farm_po_current_user', JSON.stringify(user)); 
+              setScreen('form'); 
+              setLoginCode(''); 
+              setLoginError(''); 
+            } else { 
+              setLoginError('Invalid code. Please try again.'); 
+            } 
+          };
+          
+          const handleLogout = () => { 
+            setCurrentUser(null); 
+            localStorage.removeItem('farm_po_current_user'); 
+            setScreen('login'); 
+            setFormData({location:'',department:'',supplier:'',category:'',item:'',itemSearch:'',description:'',quantity:'',paymentTerms:''}); 
+          };
+          
+          const isFormValid = () => {
+            const hasLocation = formData.location !== '';
+            const hasDepartment = formData.department !== '';
+            const hasSupplier = formData.supplier.trim() !== '';
+            const hasCategory = formData.category !== '';
+            const hasItemOrDescription = formData.category === 'other' ? formData.description.trim() !== '' : (formData.item !== '' && formData.quantity.trim() !== '');
+            return hasLocation && hasDepartment && hasSupplier && hasCategory && hasItemOrDescription && currentUser;
+          };
+          
+          const handleSubmit = async () => { 
+            if (isFormValid() && !isSaving) { 
+              const newPoNumber = await getNextPONumber(currentUser.initials); 
+              const newOrder = { 
+                poNumber: newPoNumber, 
+                date: new Date().toISOString(), 
+                submittedBy: currentUser.name, 
+                userInitials: currentUser.initials, 
+                farmLocation: formData.location, 
+                department: formData.department, 
+                supplier: formData.supplier.trim(), 
+                category: formData.category, 
+                item: formData.item || formData.description, 
+                quantity: formData.quantity, 
+                paymentTerms: formData.paymentTerms || 'Standard terms' 
+              }; 
+              await saveOrder(newOrder);
+              setLastPoNumber(newPoNumber); 
+              setScreen('success'); 
+              setFormData({location:'',department:'',supplier:'',category:'',item:'',itemSearch:'',description:'',quantity:'',paymentTerms:''}); 
+              setShowSupplierSuggestions(false); 
+              setShowItemSuggestions(false);
+            } 
+          };
+          
+          const handleChange = (field, value) => { 
+            setFormData(prev => ({...prev, [field]: value})); 
+            if (field === 'category') setFormData(prev => ({...prev, item:'', itemSearch:'', description:''})); 
+          };
+          const selectSupplier = (supplier) => { setFormData(prev => ({...prev, supplier})); setShowSupplierSuggestions(false); };
+          const selectItem = (item) => { setFormData(prev => ({...prev, item: item.name, itemSearch: ''})); setShowItemSuggestions(false); };
+          const getFilteredSuppliers = () => { 
+            const search = formData.supplier.toLowerCase();
+            return search ? defaultSuppliers.filter(s => s.toLowerCase().includes(search)) : defaultSuppliers;
+          };
+          const getFilteredItems = () => { 
+            if (!formData.category || formData.category === 'other') return [];
+            const items = itemDatabase[formData.category] || [];
+            const search = formData.itemSearch.toLowerCase();
+            return search ? items.filter(item => item.name.toLowerCase().includes(search)) : items;
+          };
+          const getUserOrders = () => currentUser ? orders.filter(order => order.userInitials === currentUser.initials) : [];
+          const getFilteredOrders = (ordersList) => { if (!orderSearch) return ordersList; const search = orderSearch.toLowerCase(); return ordersList.filter(order => (order.poNumber && order.poNumber.toLowerCase().includes(search)) || (order.submittedBy && order.submittedBy.toLowerCase().includes(search)) || (order.supplier && order.supplier.toLowerCase().includes(search)) || (order.farmLocation && order.farmLocation.toLowerCase().includes(search)) || (order.department && order.department.toLowerCase().includes(search)) || (order.item && order.item.toLowerCase().includes(search))); };
+          const isManagement = currentUser?.role === 'management';
+
+          if (screen === 'login') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"><div className="text-center mb-8"><div className="w-20 h-20 bg-green-600 rounded-full mx-auto mb-4 flex items-center justify-center"><User size={40} className="text-white" /></div><h1 className="text-3xl font-bold text-gray-800 mb-2">Purchase Orders</h1><p className="text-gray-600">Sign in with your unique code</p></div><div className="space-y-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">Enter Your 4-Digit Code</label><input type="password" inputMode="numeric" maxLength="4" value={loginCode} onChange={(e) => { setLoginCode(e.target.value); setLoginError(''); }} onKeyPress={(e) => e.key === 'Enter' && handleLogin()} placeholder="••••" className="w-full p-4 text-2xl text-center font-bold border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none tracking-widest" />{loginError && <p className="mt-2 text-sm text-red-600">{loginError}</p>}</div><button onClick={handleLogin} disabled={loginCode.length !== 4} className="w-full bg-green-600 text-white py-4 rounded-xl text-xl font-bold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">Sign In</button></div></div></div>);
+
+          if (screen === 'success') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center"><CheckCircle size={96} className="w-24 h-24 text-green-500 mx-auto mb-6" /><h2 className="text-3xl font-bold text-gray-800 mb-4">Order Submitted!</h2><div className="bg-green-100 border-4 border-green-500 rounded-xl p-6 mb-6"><p className="text-sm text-gray-600 mb-2">Your PO Number:</p><p className="text-5xl font-bold text-green-700">{lastPoNumber}</p></div><p className="text-gray-600 mb-2">Submitted by: <strong>{currentUser?.name}</strong></p><p className="text-green-600 mb-6 text-sm">✓ Saved to cloud - visible on all devices</p><div className="space-y-3"><button onClick={() => setScreen('history')} className="w-full bg-blue-600 text-white px-8 py-4 rounded-xl text-xl font-semibold hover:bg-blue-700">View My Orders</button><button onClick={() => setScreen('form')} className="w-full bg-green-600 text-white px-8 py-4 rounded-xl text-xl font-semibold hover:bg-green-700">Create Another Order</button></div></div></div>);
+
+          if (screen === 'allorders' && isManagement) { const filteredOrders = getFilteredOrders(orders); return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4"><div className="max-w-4xl mx-auto"><div className="bg-white rounded-2xl shadow-2xl overflow-hidden"><div className="bg-purple-700 text-white p-6"><div className="flex items-center justify-between mb-4"><button onClick={() => setScreen('form')} className="flex items-center gap-2 text-purple-100 hover:text-white"><ArrowLeft size={20} /> Back</button><div className="flex gap-2"><button onClick={fetchOrders} disabled={isLoading} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-800 px-4 py-2 rounded-lg">{isLoading ? <Loader size={20} /> : <RefreshCw size={20} />}</button><button onClick={handleLogout} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg"><LogOut size={20} /> Sign Out</button></div></div><div className="flex items-center gap-3"><Users size={32} /><div><h1 className="text-3xl font-bold">All Orders</h1><p className="text-purple-100">Management View - {orders.length} total orders</p></div></div></div><div className="p-4 bg-gray-50 border-b-2 border-gray-200"><div className="relative"><Search className="absolute left-4 top-3 text-gray-400" size={24} /><input type="text" value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} placeholder="Search by PO#, name, supplier, farm, item..." className="w-full pl-14 pr-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none" /></div></div><div className="p-6 space-y-4 max-h-96 overflow-y-auto">{isLoading ? (<div className="text-center py-12"><Loader size={48} className="mx-auto text-purple-500 mb-4" /><p className="text-gray-600">Loading orders...</p></div>) : filteredOrders.length === 0 ? (<div className="text-center py-12"><Search size={64} className="mx-auto text-gray-300 mb-4" /><h3 className="text-xl font-semibold text-gray-600 mb-2">No Orders Found</h3><p className="text-gray-500">Try adjusting your search</p></div>) : filteredOrders.map((order, index) => (<div key={order.poNumber || index} onClick={() => { setSelectedOrder(order); setScreen('detail'); }} className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-purple-500 hover:shadow-lg cursor-pointer"><div className="flex items-start justify-between mb-3"><div><p className="text-2xl font-bold text-purple-700">{order.poNumber}</p><p className="text-sm text-gray-500">{new Date(order.date).toLocaleDateString('en-ZA')} • <span className="font-semibold">{order.submittedBy}</span></p></div></div><div className="grid grid-cols-2 gap-2 text-sm"><div><span className="text-gray-600">Farm:</span> <span className="font-semibold">{order.farmLocation}</span></div><div><span className="text-gray-600">Supplier:</span> <span className="font-semibold">{order.supplier}</span></div></div></div>))}</div><div className="p-6 bg-gray-50 border-t-2 border-gray-200"><button onClick={() => setScreen('form')} className="w-full bg-green-600 text-white py-5 rounded-xl text-xl font-bold hover:bg-green-700 shadow-lg">+ Create New Order</button></div></div></div></div>); }
+
+          if (screen === 'history') { const userOrders = getUserOrders(); return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4"><div className="max-w-4xl mx-auto"><div className="bg-white rounded-2xl shadow-2xl overflow-hidden"><div className="bg-green-700 text-white p-6"><div className="flex items-center justify-between mb-4"><button onClick={() => setScreen('form')} className="flex items-center gap-2 text-green-100 hover:text-white"><ArrowLeft size={20} /> Back</button><div className="flex gap-2"><button onClick={fetchOrders} disabled={isLoading} className="flex items-center gap-2 bg-green-600 hover:bg-green-800 px-4 py-2 rounded-lg">{isLoading ? <Loader size={20} /> : <RefreshCw size={20} />}</button><button onClick={handleLogout} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg"><LogOut size={20} /> Sign Out</button></div></div><h1 className="text-3xl font-bold">My Orders</h1><p className="text-green-100 mt-2">{currentUser.name} - {userOrders.length} orders</p></div><div className="p-6 space-y-4 max-h-96 overflow-y-auto">{isLoading ? (<div className="text-center py-12"><Loader size={48} className="mx-auto text-green-500 mb-4" /><p className="text-gray-600">Loading orders...</p></div>) : userOrders.length === 0 ? (<div className="text-center py-12"><FileText size={64} className="mx-auto text-gray-300 mb-4" /><h3 className="text-xl font-semibold text-gray-600 mb-2">No Orders Yet</h3><button onClick={() => setScreen('form')} className="bg-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-green-700">Create First Order</button></div>) : userOrders.map((order, index) => (<div key={order.poNumber || index} onClick={() => { setSelectedOrder(order); setScreen('detail'); }} className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-green-500 hover:shadow-lg cursor-pointer"><div className="flex items-start justify-between mb-3"><div><p className="text-2xl font-bold text-green-700">{order.poNumber}</p><p className="text-sm text-gray-500">{new Date(order.date).toLocaleDateString('en-ZA')}</p></div></div><div><span className="text-gray-600">Supplier:</span> <span className="font-semibold">{order.supplier}</span></div></div>))}</div><div className="p-6 bg-gray-50 border-t-2 border-gray-200"><button onClick={() => setScreen('form')} className="w-full bg-green-600 text-white py-5 rounded-xl text-xl font-bold hover:bg-green-700 shadow-lg">+ Create New Order</button></div></div></div></div>); }
+
+          if (screen === 'detail' && selectedOrder) return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4"><div className="max-w-2xl mx-auto"><div className="bg-white rounded-2xl shadow-2xl overflow-hidden"><div className={isManagement ? 'bg-purple-700 text-white p-6' : 'bg-green-700 text-white p-6'}><button onClick={() => setScreen(isManagement ? 'allorders' : 'history')} className="flex items-center gap-2 text-white/80 hover:text-white mb-4"><ArrowLeft size={20} /> Back</button><h1 className="text-3xl font-bold">Order Details</h1></div><div className="p-8 space-y-6"><div className={(isManagement ? 'bg-purple-50 border-purple-500' : 'bg-green-50 border-green-500') + ' border-4 rounded-xl p-6 text-center'}><p className="text-sm text-gray-600 mb-1">Purchase Order Number</p><p className={'text-5xl font-bold ' + (isManagement ? 'text-purple-700' : 'text-green-700')}>{selectedOrder.poNumber}</p></div><div className="bg-gray-50 rounded-xl p-6 space-y-4"><div><p className="text-sm text-gray-600">Date Submitted</p><p className="font-semibold text-lg">{new Date(selectedOrder.date).toLocaleDateString('en-ZA', {year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})}</p></div><div><p className="text-sm text-gray-600">Submitted By</p><p className="font-semibold text-lg">{selectedOrder.submittedBy}</p></div><div className="grid grid-cols-2 gap-4"><div><p className="text-sm text-gray-600">Farm</p><p className="font-semibold">{selectedOrder.farmLocation}</p></div><div><p className="text-sm text-gray-600">Department</p><p className="font-semibold">{selectedOrder.department}</p></div></div><div><p className="text-sm text-gray-600">Supplier</p><p className="font-semibold text-lg">{selectedOrder.supplier}</p></div>{selectedOrder.item && <div><p className="text-sm text-gray-600">Item</p><p className="font-semibold">{selectedOrder.item}</p></div>}<div><p className="text-sm text-gray-600">Quantity/Details</p><p className="font-semibold">{selectedOrder.quantity}</p></div><div><p className="text-sm text-gray-600">Payment Terms</p><p className="font-semibold">{selectedOrder.paymentTerms}</p></div></div><div className="flex gap-3"><button onClick={() => setScreen('form')} className="flex-1 bg-green-600 text-white py-4 rounded-xl font-semibold hover:bg-green-700">New Order</button><button onClick={() => setScreen(isManagement ? 'allorders' : 'history')} className="flex-1 bg-gray-600 text-white py-4 rounded-xl font-semibold hover:bg-gray-700">All Orders</button></div></div></div></div></div>);
+
+          const filteredSuppliers = getFilteredSuppliers();
+          const filteredItems = getFilteredItems();
+          const showSearchBox = formData.category && formData.category !== 'other';
+          const showDescriptionBox = formData.category === 'other';
+          const formValid = isFormValid();
+
+          return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">{!isOnline && <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white py-3 px-4 text-center font-semibold z-50">📡 Working offline {pendingSyncCount > 0 && <span>- {pendingSyncCount} order{pendingSyncCount > 1 ? 's' : ''} pending sync</span>}</div>}{isSyncing && <div className="fixed top-0 left-0 right-0 bg-blue-500 text-white py-3 px-4 text-center font-semibold z-50 flex items-center justify-center gap-2"><Loader size={18} /> Syncing {pendingSyncCount} order{pendingSyncCount > 1 ? 's' : ''} to cloud...</div>}{isOnline && pendingSyncCount > 0 && !isSyncing && <div className="fixed top-0 left-0 right-0 bg-orange-500 text-white py-3 px-4 text-center font-semibold z-50 flex items-center justify-center gap-2"><span>⚠️ {pendingSyncCount} order{pendingSyncCount > 1 ? 's' : ''} waiting to sync</span><button onClick={syncOfflineOrders} className="ml-2 bg-white text-orange-600 px-3 py-1 rounded text-sm font-bold hover:bg-orange-100">Sync Now</button></div>}<div className={'max-w-2xl mx-auto ' + ((!isOnline || pendingSyncCount > 0) ? 'mt-16' : '')}><div className="bg-green-700 text-white rounded-t-2xl p-6 shadow-lg"><div className="flex items-center justify-between mb-4"><div><h1 className="text-3xl font-bold">Purchase Order Request</h1><p className="text-green-100 text-sm mt-1">Signed in as: <strong>{currentUser?.name}</strong>{isManagement && <span className="ml-2 bg-purple-500 px-2 py-1 rounded text-xs">Management</span>}</p></div><div className="flex gap-2">{isManagement && <button onClick={() => setScreen('allorders')} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg"><Users size={20} /><span className="hidden sm:inline">All Orders</span></button>}<button onClick={() => setScreen('history')} className="flex items-center gap-2 bg-green-600 hover:bg-green-800 px-4 py-2 rounded-lg"><FileText size={20} /><span className="hidden sm:inline">My Orders</span></button><button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg"><LogOut size={20} /></button></div></div></div><div className="bg-white rounded-b-2xl shadow-2xl p-8"><div className="space-y-6">
+          
+          <div><label className="block text-xl font-semibold text-gray-700 mb-3">1. Farm/Location <span className="text-red-500">*</span></label><select value={formData.location} onChange={(e) => handleChange('location', e.target.value)} className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none"><option value="">Select location...</option>{farms.map(farm => <option key={farm} value={farm}>{farm}</option>)}</select></div>
+          
+          <div><label className="block text-xl font-semibold text-gray-700 mb-3">2. Department <span className="text-red-500">*</span></label><select value={formData.department} onChange={(e) => handleChange('department', e.target.value)} className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none"><option value="">Select department...</option>{departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}</select></div>
+          
+          <div><label className="block text-xl font-semibold text-gray-700 mb-3">3. Supplier <span className="text-red-500">*</span></label><div className="relative"><Search className="absolute left-4 top-4 text-gray-400" size={24} /><input type="text" value={formData.supplier} onChange={(e) => handleChange('supplier', e.target.value)} onFocus={() => setShowSupplierSuggestions(true)} onBlur={() => setTimeout(() => setShowSupplierSuggestions(false), 200)} placeholder="Type or search supplier..." className="w-full pl-14 pr-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none" />{showSupplierSuggestions && filteredSuppliers.length > 0 && <div className="absolute z-10 w-full mt-2 bg-white border-2 border-green-500 rounded-xl shadow-xl max-h-64 overflow-y-auto">{filteredSuppliers.map((supplier) => <button key={supplier} onClick={() => selectSupplier(supplier)} className="w-full text-left p-4 hover:bg-green-50 border-b border-gray-200 last:border-b-0">{supplier}</button>)}</div>}</div>{formData.supplier && !showSupplierSuggestions && <div className="mt-3 p-3 bg-green-50 border-2 border-green-300 rounded-lg"><p className="text-sm text-gray-600">Selected:</p><p className="font-semibold text-green-800">{formData.supplier}</p></div>}<p className="text-sm text-gray-500 mt-2">Type any supplier name - you can use suppliers not in the list</p></div>
+          
+          <div><label className="block text-xl font-semibold text-gray-700 mb-3">4. Item Type <span className="text-red-500">*</span></label><div className="grid grid-cols-2 gap-3">{['tractor','vehicle','equipment','other'].map(cat => <button key={cat} onClick={() => handleChange('category', cat)} className={'p-4 rounded-xl text-base font-semibold transition-all ' + (formData.category === cat ? 'bg-green-600 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')}>{cat === 'tractor' ? '🚜 Tractor' : cat === 'vehicle' ? '🚗 Vehicle' : cat === 'equipment' ? '⚙️ Equipment' : '📦 Other'}</button>)}</div></div>
+          
+          {showSearchBox && <div><label className="block text-xl font-semibold text-gray-700 mb-3">5. Select Item <span className="text-red-500">*</span></label><div className="relative"><Search className="absolute left-4 top-4 text-gray-400" size={24} /><input type="text" value={formData.itemSearch} onChange={(e) => handleChange('itemSearch', e.target.value)} onFocus={() => setShowItemSuggestions(true)} onBlur={() => setTimeout(() => setShowItemSuggestions(false), 200)} placeholder="Type or search item..." className="w-full pl-14 pr-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none" />{showItemSuggestions && filteredItems.length > 0 && <div className="absolute z-10 w-full mt-2 bg-white border-2 border-green-500 rounded-xl shadow-xl max-h-64 overflow-y-auto">{filteredItems.map((item) => <button key={item.id} onClick={() => selectItem(item)} className="w-full text-left p-4 hover:bg-green-50 border-b border-gray-200 last:border-b-0"><div className="font-semibold">{item.name}</div></button>)}</div>}</div>{formData.item && <div className="mt-3 p-3 bg-green-50 border-2 border-green-300 rounded-lg"><p className="text-sm text-gray-600">Selected:</p><p className="font-semibold text-green-800">{formData.item}</p></div>}</div>}
+          
+          {showDescriptionBox && <div><label className="block text-xl font-semibold text-gray-700 mb-3">6. Description of Order <span className="text-red-500">*</span></label><textarea value={formData.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Enter clear description of order with quantities for accurate billing and cost allocation" rows={4} className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none resize-none placeholder-gray-400" /></div>}
+          
+          {showSearchBox && <div><label className="block text-xl font-semibold text-gray-700 mb-3">6. Description of Order <span className="text-red-500">*</span></label><textarea value={formData.quantity} onChange={(e) => handleChange('quantity', e.target.value)} placeholder="Enter clear description of order with quantities for accurate billing and cost allocation" rows={4} className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none resize-none placeholder-gray-400" /></div>}
+          
+          <div><label className="block text-xl font-semibold text-gray-700 mb-3">7. Payment Terms (Optional)</label><input type="text" value={formData.paymentTerms} onChange={(e) => handleChange('paymentTerms', e.target.value)} placeholder="e.g., '30 days', 'COD'" className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none" /></div>
+          
+          <button onClick={handleSubmit} disabled={!formValid || isSaving} className={'w-full py-6 rounded-xl text-2xl font-bold shadow-lg mt-8 transition-all ' + (formValid && !isSaving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed')}>{isSaving ? <span className="flex items-center justify-center gap-2"><Loader size={24} /> Saving...</span> : 'Submit Order'}</button>{!formValid && <p className="text-center text-red-500 text-sm mt-2">Please fill in all required fields (1-6) before submitting</p>}</div></div></div></div>);
+        };
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
