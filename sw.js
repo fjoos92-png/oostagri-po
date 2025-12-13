@@ -1,11 +1,11 @@
-const CACHE_NAME = 'farm-po-v1';
+const CACHE_NAME = 'farm-po-v2';
 const OFFLINE_QUEUE_KEY = 'farm_po_offline_queue';
 
-// Files to cache for offline use
+// Files to cache for offline use (relative paths for GitHub Pages)
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
+  './',
+  './index.html',
+  './manifest.json',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
@@ -80,7 +80,7 @@ self.addEventListener('fetch', (event) => {
     }).catch(() => {
       // Return offline fallback for navigation requests
       if (request.mode === 'navigate') {
-        return caches.match('/index.html');
+        return caches.match('./index.html');
       }
     })
   );
