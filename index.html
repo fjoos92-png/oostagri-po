@@ -111,27 +111,27 @@
           // EMPLOYEES - 21 Users (sorted alphabetically)
           // ============================================================
           const users = [
-            {name:'Anton Snyders',code:'1234',initials:'AS',role:'user'},
-            {name:'Cornelis Oosthuizen',code:'1111',initials:'CO',role:'management'},
-            {name:'David Jacobus Le Roux',code:'2222',initials:'DL',role:'user'},
-            {name:'Dian Oosthuizen',code:'3333',initials:'DO',role:'user'},
-            {name:'Dwayne Willemse',code:'4444',initials:'DW',role:'management'},
-            {name:'Elrie Oosthuizen',code:'5555',initials:'EO',role:'management'},
-            {name:'Erik Oosthuizen',code:'7777',initials:'EK',role:'management'},
-            {name:'Francois Verwey',code:'6666',initials:'FV',role:'management'},
-            {name:'Frihan Oosthuizen',code:'8888',initials:'FO',role:'management'},
-            {name:'Frikkie Oosthuizen',code:'9999',initials:'FK',role:'management'},
-            {name:'Gerrit Oosthuizen',code:'2121',initials:'GO',role:'user'},
-            {name:'Herman Steyn',code:'3434',initials:'HS',role:'user'},
-            {name:'Ian Oosthuizen',code:'4343',initials:'IO',role:'user'},
-            {name:'Jacques-Mare Swanepoel',code:'5656',initials:'JS',role:'user'},
-            {name:'Johan Pienaar',code:'6565',initials:'JP',role:'user'},
-            {name:'Johan Van Rooyen',code:'7878',initials:'JV',role:'user'},
-            {name:'Marcel Goosen',code:'9090',initials:'MG',role:'user'},
-            {name:'Marlene Oosthuizen',code:'0909',initials:'MO',role:'management'},
-            {name:'Paul Van Gooswilligen',code:'1313',initials:'PV',role:'user'},
-            {name:'Rikus Oosthuizen',code:'1212',initials:'RO',role:'user'},
-            {name:'Vickus Vermeulen',code:'8787',initials:'VV',role:'user'}
+            {name:'Anton Snyders',code:'48291',initials:'AS',role:'user'},
+            {name:'Cornelis Oosthuizen',code:'73625',initials:'CO',role:'management'},
+            {name:'David Jacobus Le Roux',code:'29471',initials:'DL',role:'user'},
+            {name:'Dian Oosthuizen',code:'85134',initials:'DO',role:'user'},
+            {name:'Dwayne Willemse',code:'36847',initials:'DW',role:'management'},
+            {name:'Elrie Oosthuizen',code:'52918',initials:'EO',role:'management'},
+            {name:'Erik Oosthuizen',code:'64739',initials:'EK',role:'management'},
+            {name:'Francois Verwey',code:'91582',initials:'FV',role:'management'},
+            {name:'Frihan Oosthuizen',code:'47263',initials:'FO',role:'management'},
+            {name:'Frikkie Oosthuizen',code:'83419',initials:'FK',role:'management'},
+            {name:'Gerrit Oosthuizen',code:'25836',initials:'GO',role:'user'},
+            {name:'Herman Steyn',code:'69274',initials:'HS',role:'user'},
+            {name:'Ian Oosthuizen',code:'31748',initials:'IO',role:'user'},
+            {name:'Jacques-Mare Swanepoel',code:'58493',initials:'JS',role:'user'},
+            {name:'Johan Pienaar',code:'72615',initials:'JP',role:'user'},
+            {name:'Johan Van Rooyen',code:'46382',initials:'JV',role:'user'},
+            {name:'Marcel Goosen',code:'19527',initials:'MG',role:'user'},
+            {name:'Marlene Oosthuizen',code:'84156',initials:'MO',role:'management'},
+            {name:'Paul Van Gooswilligen',code:'37294',initials:'PV',role:'user'},
+            {name:'Rikus Oosthuizen',code:'62851',initials:'RO',role:'user'},
+            {name:'Vickus Vermeulen',code:'95473',initials:'VV',role:'user'}
           ];
           
           // ============================================================
@@ -542,7 +542,7 @@
           const getFilteredOrders = (ordersList) => { if (!orderSearch) return ordersList; const search = orderSearch.toLowerCase(); return ordersList.filter(order => (order.poNumber && order.poNumber.toLowerCase().includes(search)) || (order.submittedBy && order.submittedBy.toLowerCase().includes(search)) || (order.supplier && order.supplier.toLowerCase().includes(search)) || (order.farmLocation && order.farmLocation.toLowerCase().includes(search)) || (order.department && order.department.toLowerCase().includes(search)) || (order.item && order.item.toLowerCase().includes(search))); };
           const isManagement = currentUser?.role === 'management';
 
-          if (screen === 'login') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"><div className="text-center mb-8"><div className="w-20 h-20 bg-green-600 rounded-full mx-auto mb-4 flex items-center justify-center"><User size={40} className="text-white" /></div><h1 className="text-3xl font-bold text-gray-800 mb-2">Purchase Orders</h1><p className="text-gray-600">Sign in with your unique code</p></div><div className="space-y-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">Enter Your 4-Digit Code</label><input type="password" inputMode="numeric" maxLength="4" value={loginCode} onChange={(e) => { setLoginCode(e.target.value); setLoginError(''); }} onKeyPress={(e) => e.key === 'Enter' && handleLogin()} placeholder="••••" className="w-full p-4 text-2xl text-center font-bold border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none tracking-widest" />{loginError && <p className="mt-2 text-sm text-red-600">{loginError}</p>}</div><button onClick={handleLogin} disabled={loginCode.length !== 4} className="w-full bg-green-600 text-white py-4 rounded-xl text-xl font-bold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">Sign In</button></div></div></div>);
+          if (screen === 'login') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"><div className="text-center mb-8"><div className="w-20 h-20 bg-green-600 rounded-full mx-auto mb-4 flex items-center justify-center"><User size={40} className="text-white" /></div><h1 className="text-3xl font-bold text-gray-800 mb-2">Purchase Orders</h1><p className="text-gray-600">Sign in with your unique code</p></div><div className="space-y-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">Enter Your 5-Digit Code</label><input type="password" inputMode="numeric" maxLength="5" value={loginCode} onChange={(e) => { setLoginCode(e.target.value); setLoginError(''); }} onKeyPress={(e) => e.key === 'Enter' && handleLogin()} placeholder="•••••" className="w-full p-4 text-2xl text-center font-bold border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none tracking-widest" />{loginError && <p className="mt-2 text-sm text-red-600">{loginError}</p>}</div><button onClick={handleLogin} disabled={loginCode.length !== 5} className="w-full bg-green-600 text-white py-4 rounded-xl text-xl font-bold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">Sign In</button></div></div></div>);
 
           if (screen === 'success') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center"><CheckCircle size={96} className="w-24 h-24 text-green-500 mx-auto mb-6" /><h2 className="text-3xl font-bold text-gray-800 mb-4">Order Submitted!</h2><div className="bg-green-100 border-4 border-green-500 rounded-xl p-6 mb-6"><p className="text-sm text-gray-600 mb-2">Your PO Number:</p><p className="text-5xl font-bold text-green-700">{lastPoNumber}</p></div><p className="text-gray-600 mb-2">Submitted by: <strong>{currentUser?.name}</strong></p><p className="text-green-600 mb-6 text-sm">✓ Saved to cloud - visible on all devices</p><div className="space-y-3"><button onClick={() => setScreen('history')} className="w-full bg-blue-600 text-white px-8 py-4 rounded-xl text-xl font-semibold hover:bg-blue-700">View My Orders</button><button onClick={() => setScreen('form')} className="w-full bg-green-600 text-white px-8 py-4 rounded-xl text-xl font-semibold hover:bg-green-700">Create Another Order</button></div></div></div>);
 
