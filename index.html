@@ -108,6 +108,10 @@
           const [isSyncing, setIsSyncing] = useState(false);
           const [isSaving, setIsSaving] = useState(false);
           const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+          const [showForgotCode, setShowForgotCode] = useState(false);
+          const [forgotEmail, setForgotEmail] = useState('');
+          const [forgotStatus, setForgotStatus] = useState('');
+          const [forgotLoading, setForgotLoading] = useState(false);
           
           // Check if should show install prompt
           useEffect(() => {
@@ -125,32 +129,63 @@
           
           const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
           const isAndroid = /Android/.test(navigator.userAgent);
+          
+          const handleForgotCode = async () => {
+            if (!forgotEmail.trim()) {
+              setForgotStatus('Please enter your email address');
+              return;
+            }
+            const user = users.find(u => u.email.toLowerCase() === forgotEmail.trim().toLowerCase());
+            if (!user) {
+              setForgotStatus('Email not found. Please contact management.');
+              return;
+            }
+            if (!user.email) {
+              setForgotStatus('No email registered for this user. Please contact management.');
+              return;
+            }
+            setForgotLoading(true);
+            setForgotStatus('');
+            try {
+              const response = await fetch(API_URL + '?action=sendCode&email=' + encodeURIComponent(user.email) + '&name=' + encodeURIComponent(user.name) + '&code=' + encodeURIComponent(user.code));
+              const result = await response.json();
+              if (result.success) {
+                setForgotStatus('✅ Code sent to your email!');
+                setTimeout(() => { setShowForgotCode(false); setForgotEmail(''); setForgotStatus(''); }, 3000);
+              } else {
+                setForgotStatus('Failed to send email. Please contact management.');
+              }
+            } catch (error) {
+              setForgotStatus('Error sending email. Please contact management.');
+            }
+            setForgotLoading(false);
+          };
 
           // ============================================================
           // EMPLOYEES - 21 Users (sorted alphabetically)
           // ============================================================
           const users = [
-            {name:'Anton Snyders',code:'48291',initials:'AS',role:'user'},
-            {name:'Cornelis Oosthuizen',code:'73625',initials:'CO',role:'management'},
-            {name:'David Jacobus Le Roux',code:'29471',initials:'DL',role:'user'},
-            {name:'Dian Oosthuizen',code:'85134',initials:'DO',role:'user'},
-            {name:'Dwayne Willemse',code:'36847',initials:'DW',role:'management'},
-            {name:'Elrie Oosthuizen',code:'52918',initials:'EO',role:'management'},
-            {name:'Erik Oosthuizen',code:'64739',initials:'EK',role:'management'},
-            {name:'Francois Verwey',code:'91582',initials:'FV',role:'management'},
-            {name:'Frihan Oosthuizen',code:'47263',initials:'FO',role:'management'},
-            {name:'Frikkie Oosthuizen',code:'83419',initials:'FK',role:'management'},
-            {name:'Gerrit Oosthuizen',code:'25836',initials:'GO',role:'user'},
-            {name:'Herman Steyn',code:'69274',initials:'HS',role:'user'},
-            {name:'Ian Oosthuizen',code:'31748',initials:'IO',role:'user'},
-            {name:'Jacques-Mare Swanepoel',code:'58493',initials:'JS',role:'user'},
-            {name:'Johan Pienaar',code:'72615',initials:'JP',role:'user'},
-            {name:'Johan Van Rooyen',code:'46382',initials:'JV',role:'user'},
-            {name:'Marcel Goosen',code:'19527',initials:'MG',role:'user'},
-            {name:'Marlene Oosthuizen',code:'84156',initials:'MO',role:'management'},
-            {name:'Paul Van Gooswilligen',code:'37294',initials:'PV',role:'user'},
-            {name:'Rikus Oosthuizen',code:'62851',initials:'RO',role:'user'},
-            {name:'Vickus Vermeulen',code:'95473',initials:'VV',role:'user'}
+            {name:'Anton Snyders',code:'48291',initials:'AS',role:'user',email:'pv@oostagri.co.za'},
+            {name:'Cornelis Oosthuizen',code:'73625',initials:'CO',role:'management',email:'Cornelis@oostagri.co.za'},
+            {name:'David Jacobus Le Roux',code:'29471',initials:'DL',role:'user',email:''},
+            {name:'Dian Oosthuizen',code:'85134',initials:'DO',role:'management',email:'Dian@oostagri.co.za'},
+            {name:'Dwayne Willemse',code:'36847',initials:'DW',role:'management',email:'DW@oostagri.co.za'},
+            {name:'Elrie Oosthuizen',code:'52918',initials:'EO',role:'management',email:'Elrie@oostagri.co.za'},
+            {name:'Erik Oosthuizen',code:'64739',initials:'EK',role:'management',email:'Erik@oostagri.co.za'},
+            {name:'Francois Verwey',code:'91582',initials:'FV',role:'management',email:'Francois@oostagri.co.za'},
+            {name:'Frihan Oosthuizen',code:'47263',initials:'FO',role:'management',email:'Frihan@oostagri.co.za'},
+            {name:'Frikkie Oosthuizen',code:'83419',initials:'FK',role:'management',email:'Frikkie@oostagri.co.za'},
+            {name:'Gerrit Oosthuizen',code:'25836',initials:'GO',role:'management',email:'Gerrit@oostagri.co.za'},
+            {name:'Herman Steyn',code:'69274',initials:'HS',role:'user',email:''},
+            {name:'Ian Oosthuizen',code:'31748',initials:'IO',role:'management',email:'ian@swdconnect.co.za'},
+            {name:'Jacques-Mare Swanepoel',code:'58493',initials:'JS',role:'user',email:'vh@oostagri.co.za'},
+            {name:'Johan Pienaar',code:'72615',initials:'JP',role:'user',email:''},
+            {name:'Johan Van Rooyen',code:'46382',initials:'JV',role:'user',email:''},
+            {name:'Marcel Goosen',code:'19527',initials:'MG',role:'user',email:''},
+            {name:'Marlene Oosthuizen',code:'84156',initials:'MO',role:'management',email:'Marlene@oostagri.co.za'},
+            {name:'Paul Van Gooswilligen',code:'37294',initials:'PV',role:'user',email:'VD@oostagri.co.za'},
+            {name:'Rikus Oosthuizen',code:'62851',initials:'RO',role:'management',email:'Rikus@oostagri.co.za'},
+            {name:'Vickus Vermeulen',code:'95473',initials:'VV',role:'user',email:''}
           ];
           
           // ============================================================
@@ -561,7 +596,7 @@
           const getFilteredOrders = (ordersList) => { if (!orderSearch) return ordersList; const search = orderSearch.toLowerCase(); return ordersList.filter(order => (order.poNumber && order.poNumber.toLowerCase().includes(search)) || (order.submittedBy && order.submittedBy.toLowerCase().includes(search)) || (order.supplier && order.supplier.toLowerCase().includes(search)) || (order.farmLocation && order.farmLocation.toLowerCase().includes(search)) || (order.department && order.department.toLowerCase().includes(search)) || (order.item && order.item.toLowerCase().includes(search))); };
           const isManagement = currentUser?.role === 'management';
 
-          if (screen === 'login') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"><div className="text-center mb-8"><div className="w-20 h-20 bg-green-600 rounded-full mx-auto mb-4 flex items-center justify-center"><User size={40} className="text-white" /></div><h1 className="text-3xl font-bold text-gray-800 mb-2">Purchase Orders</h1><p className="text-gray-600">Sign in with your unique code</p></div><div className="space-y-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">Enter Your 5-Digit Code</label><input type="password" inputMode="numeric" maxLength="5" value={loginCode} onChange={(e) => { setLoginCode(e.target.value); setLoginError(''); }} onKeyPress={(e) => e.key === 'Enter' && handleLogin()} placeholder="•••••" className="w-full p-4 text-2xl text-center font-bold border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none tracking-widest" />{loginError && <p className="mt-2 text-sm text-red-600">{loginError}</p>}</div><button onClick={handleLogin} disabled={loginCode.length !== 5} className="w-full bg-green-600 text-white py-4 rounded-xl text-xl font-bold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">Sign In</button></div></div>{showInstallPrompt && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-4"><div className="bg-white rounded-t-2xl w-full max-w-md p-6 pb-8"><div className="text-center"><div className="w-16 h-16 bg-green-600 rounded-2xl mx-auto mb-4 flex items-center justify-center"><span className="text-white font-bold text-2xl">PO</span></div><h3 className="text-xl font-bold text-gray-800 mb-2">Install Oostagri PO</h3><p className="text-gray-600 mb-6">Add this app to your home screen for quick access</p>{isIOS && <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left"><p className="text-sm text-gray-700"><span className="font-semibold">Step 1:</span> Tap the Share button <span className="inline-block bg-gray-200 px-2 py-1 rounded text-xs">⬆️</span> at the bottom</p><p className="text-sm text-gray-700 mt-2"><span className="font-semibold">Step 2:</span> Scroll and tap <span className="font-semibold">"Add to Home Screen"</span></p></div>}{isAndroid && <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left"><p className="text-sm text-gray-700"><span className="font-semibold">Step 1:</span> Tap the menu <span className="inline-block bg-gray-200 px-2 py-1 rounded text-xs">⋮</span> at the top right</p><p className="text-sm text-gray-700 mt-2"><span className="font-semibold">Step 2:</span> Tap <span className="font-semibold">"Add to Home Screen"</span></p></div>}{!isIOS && !isAndroid && <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left"><p className="text-sm text-gray-700">Use your browser's menu to add this app to your home screen or bookmarks.</p></div>}<button onClick={dismissInstallPrompt} className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700">Got it!</button></div></div></div>}</div>);
+          if (screen === 'login') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"><div className="text-center mb-8"><div className="w-20 h-20 bg-green-600 rounded-full mx-auto mb-4 flex items-center justify-center"><User size={40} className="text-white" /></div><h1 className="text-3xl font-bold text-gray-800 mb-2">Purchase Orders</h1><p className="text-gray-600">Sign in with your unique code</p></div><div className="space-y-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">Enter Your 5-Digit Code</label><input type="password" inputMode="numeric" maxLength="5" value={loginCode} onChange={(e) => { setLoginCode(e.target.value); setLoginError(''); }} onKeyPress={(e) => e.key === 'Enter' && handleLogin()} placeholder="•••••" className="w-full p-4 text-2xl text-center font-bold border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none tracking-widest" />{loginError && <p className="mt-2 text-sm text-red-600">{loginError}</p>}</div><button onClick={handleLogin} disabled={loginCode.length !== 5} className="w-full bg-green-600 text-white py-4 rounded-xl text-xl font-bold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">Sign In</button><button onClick={() => setShowForgotCode(true)} className="w-full text-green-600 text-sm font-medium hover:underline">Forgot your code?</button></div></div>{showForgotCode && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl w-full max-w-md p-6"><div className="text-center"><h3 className="text-xl font-bold text-gray-800 mb-2">Forgot Your Code?</h3><p className="text-gray-600 mb-6">Enter your email address and we'll send your login code</p><input type="email" value={forgotEmail} onChange={(e) => { setForgotEmail(e.target.value); setForgotStatus(''); }} placeholder="your.email@example.com" className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none mb-4" />{forgotStatus && <p className={'mb-4 text-sm ' + (forgotStatus.includes('✅') ? 'text-green-600' : 'text-red-600')}>{forgotStatus}</p>}<div className="flex gap-3"><button onClick={() => { setShowForgotCode(false); setForgotEmail(''); setForgotStatus(''); }} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300">Cancel</button><button onClick={handleForgotCode} disabled={forgotLoading} className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 disabled:bg-gray-300">{forgotLoading ? 'Sending...' : 'Send Code'}</button></div></div></div></div>}{showInstallPrompt && <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-4"><div className="bg-white rounded-t-2xl w-full max-w-md p-6 pb-8"><div className="text-center"><div className="w-16 h-16 bg-green-600 rounded-2xl mx-auto mb-4 flex items-center justify-center"><span className="text-white font-bold text-2xl">PO</span></div><h3 className="text-xl font-bold text-gray-800 mb-2">Install Oostagri PO</h3><p className="text-gray-600 mb-6">Add this app to your home screen for quick access</p>{isIOS && <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left"><p className="text-sm text-gray-700"><span className="font-semibold">Step 1:</span> Tap the Share button <span className="inline-block bg-gray-200 px-2 py-1 rounded text-xs">⬆️</span> at the bottom</p><p className="text-sm text-gray-700 mt-2"><span className="font-semibold">Step 2:</span> Scroll and tap <span className="font-semibold">"Add to Home Screen"</span></p></div>}{isAndroid && <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left"><p className="text-sm text-gray-700"><span className="font-semibold">Step 1:</span> Tap the menu <span className="inline-block bg-gray-200 px-2 py-1 rounded text-xs">⋮</span> at the top right</p><p className="text-sm text-gray-700 mt-2"><span className="font-semibold">Step 2:</span> Tap <span className="font-semibold">"Add to Home Screen"</span></p></div>}{!isIOS && !isAndroid && <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left"><p className="text-sm text-gray-700">Use your browser's menu to add this app to your home screen or bookmarks.</p></div>}<button onClick={dismissInstallPrompt} className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700">Got it!</button></div></div></div>}</div>);
 
           if (screen === 'success') return (<div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 flex items-center justify-center"><div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center"><CheckCircle size={96} className="w-24 h-24 text-green-500 mx-auto mb-6" /><h2 className="text-3xl font-bold text-gray-800 mb-4">Order Submitted!</h2><div className="bg-green-100 border-4 border-green-500 rounded-xl p-6 mb-6"><p className="text-sm text-gray-600 mb-2">Your PO Number:</p><p className="text-5xl font-bold text-green-700">{lastPoNumber}</p></div><p className="text-gray-600 mb-2">Submitted by: <strong>{currentUser?.name}</strong></p><p className="text-green-600 mb-6 text-sm">✓ Saved to cloud - visible on all devices</p><div className="space-y-3"><button onClick={() => setScreen('history')} className="w-full bg-blue-600 text-white px-8 py-4 rounded-xl text-xl font-semibold hover:bg-blue-700">View My Orders</button><button onClick={() => setScreen('form')} className="w-full bg-green-600 text-white px-8 py-4 rounded-xl text-xl font-semibold hover:bg-green-700">Create Another Order</button></div></div></div>);
 
