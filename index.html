@@ -563,8 +563,8 @@
                 department: formData.department, 
                 supplier: formData.supplier.trim(), 
                 category: formData.category, 
-                item: formData.item || formData.description, 
-                quantity: formData.quantity, 
+                item: formData.category === 'other' ? 'Other' : formData.item, 
+                quantity: formData.category === 'other' ? formData.description : formData.quantity, 
                 paymentTerms: formData.paymentTerms || 'Standard terms' 
               }; 
               await saveOrder(newOrder);
