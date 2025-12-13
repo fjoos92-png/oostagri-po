@@ -2,7 +2,7 @@
   "name": "Oostagri Purchase Orders",
   "short_name": "Oostagri PO",
   "description": "Purchase Order Management System",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#15803d",
   "theme_color": "#15803d",
