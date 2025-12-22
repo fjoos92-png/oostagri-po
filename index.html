@@ -390,6 +390,30 @@
           // ============================================================
           // API FUNCTIONS
           // ============================================================
+          const syncLastPONumbers = (ordersList) => {
+            // Update localStorage with max PO numbers from fetched orders
+            const maxByUser = {};
+            ordersList.forEach(order => {
+              if (order.poNumber && order.userInitials) {
+                const match = order.poNumber.match(/-(\d+)$/);
+                if (match) {
+                  const num = parseInt(match[1], 10);
+                  if (!maxByUser[order.userInitials] || num > maxByUser[order.userInitials]) {
+                    maxByUser[order.userInitials] = num;
+                  }
+                }
+              }
+            });
+            // Save max numbers to localStorage
+            Object.entries(maxByUser).forEach(([initials, maxNum]) => {
+              const storageKey = 'farm_po_last_number_' + initials;
+              const currentStored = parseInt(localStorage.getItem(storageKey) || '0', 10);
+              if (maxNum > currentStored) {
+                localStorage.setItem(storageKey, String(maxNum));
+              }
+            });
+          };
+
           const fetchOrders = async () => {
             setIsLoading(true);
             try {
@@ -397,6 +421,7 @@
               const data = await response.json();
               if (data.success) {
                 setOrders(data.orders);
+                syncLastPONumbers(data.orders);
               }
             } catch (error) {
               console.error('Error fetching orders:', error);
@@ -439,19 +464,31 @@
 
           // Generate PO number locally from cached orders (no API call needed)
           const getNextPONumber = (userInitials) => {
+            // Check localStorage for last used number
+            const storageKey = 'farm_po_last_number_' + userInitials;
+            const storedLastNumber = parseInt(localStorage.getItem(storageKey) || '0', 10);
+
             // Find highest existing PO number for this user from local orders
             const userOrders = orders.filter(order => order.userInitials === userInitials);
-            let maxNumber = 0;
+            let maxFromOrders = 0;
             userOrders.forEach(order => {
               if (order.poNumber) {
                 const match = order.poNumber.match(/-(\d+)$/);
                 if (match) {
                   const num = parseInt(match[1], 10);
-                  if (num > maxNumber) maxNumber = num;
+                  if (num > maxFromOrders) maxFromOrders = num;
                 }
               }
             });
-            return userInitials + '-' + String(maxNumber + 1).padStart(4, '0');
+
+            // Use the higher of stored or orders-based number
+            const maxNumber = Math.max(storedLastNumber, maxFromOrders);
+            const nextNumber = maxNumber + 1;
+
+            // Save the new number to localStorage
+            localStorage.setItem(storageKey, String(nextNumber));
+
+            return userInitials + '-' + String(nextNumber).padStart(4, '0');
           };
 
           useEffect(() => {
