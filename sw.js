@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farm-po-v2';
+const CACHE_NAME = 'farm-po-v3';
 const OFFLINE_QUEUE_KEY = 'farm_po_offline_queue';
 
 // Files to cache for offline use (relative paths for GitHub Pages)
