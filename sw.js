@@ -1,23 +1,42 @@
-const CACHE_NAME = 'farm-po-v2';
+const CACHE_NAME = 'farm-po-v8';
 const OFFLINE_QUEUE_KEY = 'farm_po_offline_queue';
 
-// Files to cache for offline use (relative paths for GitHub Pages)
-const STATIC_ASSETS = [
+// Core assets that must be cached (local files)
+const CORE_ASSETS = [
   './',
   './index.html',
-  './manifest.json',
+  './manifest.json'
+];
+
+// External CDN assets (cached opportunistically - failures won't break install)
+const CDN_ASSETS = [
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
   'https://unpkg.com/@babel/standalone/babel.min.js'
 ];
 
-// Install: Cache static assets
+// Install: Cache assets (core required, CDN optional)
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('Caching static assets');
-      return cache.addAll(STATIC_ASSETS);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      console.log('Caching core assets');
+      // Cache core assets - these must succeed
+      await cache.addAll(CORE_ASSETS);
+
+      // Cache CDN assets individually - failures are logged but don't break install
+      console.log('Caching CDN assets');
+      for (const url of CDN_ASSETS) {
+        try {
+          const response = await fetch(url, { mode: 'cors' });
+          if (response.ok) {
+            await cache.put(url, response);
+            console.log('Cached:', url);
+          }
+        } catch (err) {
+          console.warn('Failed to cache CDN asset:', url, err.message);
+        }
+      }
     })
   );
   self.skipWaiting();
@@ -65,6 +84,14 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
+        // Return cached version, but also update cache in background
+        fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, response);
+            });
+          }
+        }).catch(() => {});
         return cachedResponse;
       }
       return fetch(request).then((response) => {
@@ -82,6 +109,8 @@ self.addEventListener('fetch', (event) => {
       if (request.mode === 'navigate') {
         return caches.match('./index.html');
       }
+      // For other requests, try to return any cached version
+      return caches.match(request);
     })
   );
 });
