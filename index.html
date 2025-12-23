@@ -770,7 +770,7 @@
 
           {showSearchBox && <div data-step="6" data-field="quantity"><label className="block text-xl font-semibold text-gray-700 mb-3">Description of Order <span className="text-red-500">*</span></label><textarea value={formData.quantity} onChange={(e) => handleChange('quantity', e.target.value)} placeholder="Enter clear description of order with quantities for accurate billing and cost allocation" rows={4} className={'w-full p-4 text-lg border-2 rounded-xl focus:border-slate-500 focus:outline-none resize-none placeholder-gray-400 ' + (validationErrors.quantity ? 'border-red-400 bg-red-50' : 'border-gray-300')} /></div>}
 
-          <div><label className="block text-xl font-semibold text-gray-700 mb-3">Special Payment Terms</label><input type="text" value={formData.paymentTerms} onChange={(e) => handleChange('paymentTerms', e.target.value)} placeholder="Only if special payment terms are applicable" className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-slate-500 focus:outline-none" /></div>
+          <div><label className="block text-xl font-semibold text-gray-700 mb-1">Special Payment Terms</label><p className="text-sm text-gray-600 font-medium mb-3">Leave empty for normal payment</p><input type="text" value={formData.paymentTerms} onChange={(e) => handleChange('paymentTerms', e.target.value)} placeholder="E.g. 60 days, 90 days" className="w-full p-4 text-lg border-2 border-gray-300 rounded-xl focus:border-slate-500 focus:outline-none" /></div>
 
           <button onClick={handleSubmit} className="w-full py-6 rounded-xl text-2xl font-bold shadow-lg mt-8 transition-all bg-slate-700 text-white hover:bg-slate-800 active:scale-98">Submit Order</button></div></div></div>
 
