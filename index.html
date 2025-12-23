@@ -632,7 +632,8 @@
               if (!stillPending) continue;
               
               try {
-                const response = await fetch(`${API_URL}?action=addOrder&order=${encodeURIComponent(JSON.stringify(order))}`);
+                const action = order._action === 'UPDATE' ? 'updateOrder' : 'addOrder';
+                const response = await fetch(`${API_URL}?action=${action}&order=${encodeURIComponent(JSON.stringify(order))}`);
                 const data = await response.json();
                 if (data.success) {
                   window.OfflineQueue.remove(order._queuedAt);
