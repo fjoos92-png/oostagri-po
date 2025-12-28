@@ -250,7 +250,8 @@
               setForgotStatus('Please enter your email address');
               return;
             }
-            const user = users.find(u => u.email.toLowerCase() === forgotEmail.trim().toLowerCase());
+            const activeUsers = cachedLookups?.users || users;
+            const user = activeUsers.find(u => u.email && u.email.toLowerCase() === forgotEmail.trim().toLowerCase());
             if (!user) {
               setForgotStatus('Email not found. Please contact management.');
               return;
@@ -757,17 +758,18 @@
             }
           }, [currentUser]);
 
-          const handleLogin = () => { 
-            const user = users.find(u => u.code === loginCode); 
-            if (user) { 
-              setCurrentUser(user); 
-              localStorage.setItem('farm_po_current_user', JSON.stringify(user)); 
-              setScreen('form'); 
-              setLoginCode(''); 
-              setLoginError(''); 
-            } else { 
-              setLoginError('Invalid code. Please try again.'); 
-            } 
+          const handleLogin = () => {
+            const activeUsers = cachedLookups?.users || users;
+            const user = activeUsers.find(u => u.code === loginCode);
+            if (user) {
+              setCurrentUser(user);
+              localStorage.setItem('farm_po_current_user', JSON.stringify(user));
+              setScreen('form');
+              setLoginCode('');
+              setLoginError('');
+            } else {
+              setLoginError('Invalid code. Please try again.');
+            }
           };
           
           const handleLogout = () => { 
@@ -839,6 +841,7 @@
           const selectSupplier = (supplier) => { setFormData(prev => ({...prev, supplier})); setShowSupplierSuggestions(false); setTimeout(() => { const next = document.querySelector('[data-step="4"]'); if (next) next.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 150); };
           const selectItem = (item) => { setFormData(prev => ({...prev, item: item.name, itemSearch: ''})); setShowItemSuggestions(false); setTimeout(() => { const next = document.querySelector('[data-step="6"]'); if (next) { next.scrollIntoView({behavior: 'smooth', block: 'start'}); next.querySelector('textarea')?.focus(); } }, 150); };
           // Use cached lookups from Google Sheets, or fall back to hardcoded defaults
+          const getActiveUsers = () => cachedLookups?.users || users;
           const getActiveSuppliers = () => cachedLookups?.suppliers || defaultSuppliers;
           const getActiveFarms = () => cachedLookups?.farms || farms;
           const getActiveDepartments = () => cachedLookups?.departments || departments;

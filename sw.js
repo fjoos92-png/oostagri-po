@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farm-po-v51';
+const CACHE_NAME = 'farm-po-v52';
 const OFFLINE_QUEUE_KEY = 'farm_po_offline_queue';
 
 // Core assets that must be cached (local files)
