@@ -124,6 +124,16 @@
           const [validationErrors, setValidationErrors] = useState({});
           const [showValidationToast, setShowValidationToast] = useState(false);
 
+          // Cached lookups from Google Sheets (with fallback to hardcoded defaults)
+          const [cachedLookups, setCachedLookups] = useState(() => {
+            const cached = localStorage.getItem('farm_po_lookups_cache');
+            return cached ? JSON.parse(cached) : null;
+          });
+          const [lookupsLastUpdated, setLookupsLastUpdated] = useState(() => {
+            const cached = localStorage.getItem('farm_po_lookups_cache');
+            return cached ? JSON.parse(cached).timestamp : null;
+          });
+
           const copyPONumber = (poNumber, e) => {
             if (e) e.stopPropagation();
             navigator.clipboard.writeText(poNumber);
@@ -543,6 +553,28 @@
                 console.error('Error fetching orders:', error);
               }
               setIsLoading(false);
+
+              // Also fetch lookups during sync
+              fetchLookups();
+            }
+          };
+
+          // Fetch lookup data from Google Sheets (suppliers, vehicles, equipment, tractors)
+          const fetchLookups = async () => {
+            if (!navigator.onLine) return;
+            try {
+              const response = await fetch(`${API_URL}?action=getLookups`);
+              const data = await response.json();
+              if (data.success && data.lookups) {
+                const timestamp = Date.now();
+                const cacheData = { ...data.lookups, timestamp };
+                localStorage.setItem('farm_po_lookups_cache', JSON.stringify(cacheData));
+                setCachedLookups(cacheData);
+                setLookupsLastUpdated(timestamp);
+                console.log('Lookups synced:', Object.keys(data.lookups).map(k => `${k}: ${Array.isArray(data.lookups[k]) ? data.lookups[k].length : 'N/A'}`).join(', '));
+              }
+            } catch (error) {
+              console.log('Lookups fetch skipped (sheets not set up yet or offline)');
             }
           };
 
@@ -806,13 +838,23 @@
           };
           const selectSupplier = (supplier) => { setFormData(prev => ({...prev, supplier})); setShowSupplierSuggestions(false); setTimeout(() => { const next = document.querySelector('[data-step="4"]'); if (next) next.scrollIntoView({behavior: 'smooth', block: 'start'}); }, 150); };
           const selectItem = (item) => { setFormData(prev => ({...prev, item: item.name, itemSearch: ''})); setShowItemSuggestions(false); setTimeout(() => { const next = document.querySelector('[data-step="6"]'); if (next) { next.scrollIntoView({behavior: 'smooth', block: 'start'}); next.querySelector('textarea')?.focus(); } }, 150); };
-          const getFilteredSuppliers = () => { 
-            const search = formData.supplier.toLowerCase();
-            return search ? defaultSuppliers.filter(s => s.toLowerCase().includes(search)) : defaultSuppliers;
+          // Use cached lookups from Google Sheets, or fall back to hardcoded defaults
+          const getActiveSuppliers = () => cachedLookups?.suppliers || defaultSuppliers;
+          const getActiveItems = (category) => {
+            if (!category || category === 'other') return [];
+            // Map category to cached lookup key
+            const lookupMap = { tractor: 'tractors', vehicle: 'vehicles', equipment: 'equipment' };
+            const cacheKey = lookupMap[category];
+            if (cacheKey && cachedLookups?.[cacheKey]) return cachedLookups[cacheKey];
+            return itemDatabase[category] || [];
           };
-          const getFilteredItems = () => { 
-            if (!formData.category || formData.category === 'other') return [];
-            const items = itemDatabase[formData.category] || [];
+          const getFilteredSuppliers = () => {
+            const suppliers = getActiveSuppliers();
+            const search = formData.supplier.toLowerCase();
+            return search ? suppliers.filter(s => s.toLowerCase().includes(search)) : suppliers;
+          };
+          const getFilteredItems = () => {
+            const items = getActiveItems(formData.category);
             const search = formData.itemSearch.toLowerCase();
             return search ? items.filter(item => item.name.toLowerCase().includes(search)) : items;
           };
