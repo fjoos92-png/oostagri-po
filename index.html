@@ -530,6 +530,7 @@
           const fetchOrders = async () => {
             // Load cached orders first for instant display
             const cachedData = localStorage.getItem('farm_po_orders_cache');
+            const hasCachedData = !!cachedData;
             if (cachedData) {
               const { orders: cachedOrders, timestamp } = JSON.parse(cachedData);
               setOrders(cachedOrders);
@@ -538,7 +539,8 @@
 
             // Then fetch fresh data if online
             if (navigator.onLine) {
-              setIsLoading(true);
+              // Only show loading spinner if no cached data - otherwise refresh silently
+              if (!hasCachedData) setIsLoading(true);
               try {
                 const response = await fetch(`${API_URL}?action=getOrders`);
                 const data = await response.json();
@@ -754,7 +756,22 @@
 
           useEffect(() => {
             if (currentUser) {
-              fetchOrders();
+              // Load cached orders immediately for instant display
+              const cachedData = localStorage.getItem('farm_po_orders_cache');
+              if (cachedData) {
+                const { orders: cachedOrders, timestamp } = JSON.parse(cachedData);
+                setOrders(cachedOrders);
+                setOrdersLastUpdated(timestamp);
+
+                // Only auto-refresh if data is older than 6 hours
+                const sixHours = 6 * 60 * 60 * 1000;
+                if (navigator.onLine && (Date.now() - timestamp > sixHours)) {
+                  fetchOrders();
+                }
+              } else {
+                // No cached data - fetch immediately
+                fetchOrders();
+              }
             }
           }, [currentUser]);
 
