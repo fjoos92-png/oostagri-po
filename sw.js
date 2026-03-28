@@ -51,21 +51,29 @@ self.addEventListener('activate', (event) => {
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
+    }).then(() => {
+      // Notify all open tabs that a new version is active so they can reload
+      return self.clients.claim().then(() => {
+        return self.clients.matchAll({ type: 'window' }).then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'SW_UPDATED' });
+          });
+        });
+      });
     })
   );
-  self.clients.claim();
 });
 
 // Fetch: Serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  
+
   // Skip non-GET requests
   if (request.method !== 'GET') {
     return;
   }
-  
+
   // For API calls, try network first, then fail gracefully
   if (url.hostname === 'script.google.com') {
     event.respondWith(
@@ -79,19 +87,33 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-  
-  // For static assets, try cache first, then network
+
+  // For the main app HTML, always try network first so updates reach users immediately
+  const isHtmlRequest = request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/');
+  if (isHtmlRequest) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Offline fallback: serve cached HTML
+          return caches.match('./index.html');
+        })
+    );
+    return;
+  }
+
+  // For CDN assets (React, Tailwind, Babel), use cache first — they rarely change
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached version, but also update cache in background
-        fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, response);
-            });
-          }
-        }).catch(() => {});
         return cachedResponse;
       }
       return fetch(request).then((response) => {
@@ -105,11 +127,6 @@ self.addEventListener('fetch', (event) => {
         return response;
       });
     }).catch(() => {
-      // Return offline fallback for navigation requests
-      if (request.mode === 'navigate') {
-        return caches.match('./index.html');
-      }
-      // For other requests, try to return any cached version
       return caches.match(request);
     })
   );
