@@ -42,7 +42,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: Clean up old caches
+// Activate: Clean up old caches and take control silently
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -52,14 +52,9 @@ self.addEventListener('activate', (event) => {
           .map((name) => caches.delete(name))
       );
     }).then(() => {
-      // Notify all open tabs that a new version is active so they can reload
-      return self.clients.claim().then(() => {
-        return self.clients.matchAll({ type: 'window' }).then((clients) => {
-          clients.forEach((client) => {
-            client.postMessage({ type: 'SW_UPDATED' });
-          });
-        });
-      });
+      // Take control of all open tabs immediately.
+      // No forced reload — the updated app is served on the next navigation.
+      return self.clients.claim();
     })
   );
 });
