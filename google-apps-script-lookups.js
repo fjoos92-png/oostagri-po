@@ -79,7 +79,8 @@ function getOrders() {
           quantity: row[10],
           paymentTerms: row[11],
           editedAt: row[12] || null,
-          editedBy: row[13] || null
+          editedBy: row[13] || null,
+          itemId: row[14] ? row[14].toString() : ''
         });
       }
     }
@@ -116,7 +117,8 @@ function addOrder(orderData) {
       orderData.quantity,
       orderData.paymentTerms,
       '', // editedAt
-      ''  // editedBy
+      '', // editedBy
+      orderData.itemId || '' // stable lookup id; survives renames in Tractors/Vehicles/Equipment sheets
     ]);
 
     return { success: true, poNumber: orderData.poNumber };
@@ -142,7 +144,12 @@ function updateOrder(orderData) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === orderData.poNumber) {
         const row = i + 1;
-        sheet.getRange(row, 1, 1, 14).setValues([[
+        // Preserve existing itemId if not supplied (legacy rows / older clients)
+        const existingItemId = data[i][14] ? data[i][14].toString() : '';
+        const itemId = (orderData.itemId !== undefined && orderData.itemId !== null)
+          ? orderData.itemId
+          : existingItemId;
+        sheet.getRange(row, 1, 1, 15).setValues([[
           orderData.poNumber,
           orderData.date,
           orderData.submittedBy,
@@ -156,7 +163,8 @@ function updateOrder(orderData) {
           orderData.quantity,
           orderData.paymentTerms,
           orderData.editedAt,
-          orderData.editedBy
+          orderData.editedBy,
+          itemId
         ]]);
         return { success: true, poNumber: orderData.poNumber };
       }
