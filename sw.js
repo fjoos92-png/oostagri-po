@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farm-po-v58';
+const CACHE_NAME = 'farm-po-v59';
 const OFFLINE_QUEUE_KEY = 'farm_po_offline_queue';
 
 // Core assets that must be cached (local files)
@@ -9,11 +9,12 @@ const CORE_ASSETS = [
 ];
 
 // External CDN assets (cached opportunistically - failures won't break install)
+// Using jsdelivr as primary (more reliable than unpkg)
 const CDN_ASSETS = [
   'https://cdn.tailwindcss.com',
-  'https://unpkg.com/react@18/umd/react.production.min.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js'
+  'https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js',
+  'https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js',
+  'https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js'
 ];
 
 // Install: Cache assets (core required, CDN optional)
